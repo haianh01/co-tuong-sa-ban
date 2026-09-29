@@ -122,6 +122,10 @@ a.btn{text-decoration:none}
 .ai-review .k-inacc .tag{color:#b7791f;border-color:#b7791f}
 .ai-review .k-mistake .tag{color:#dd6b20;border-color:#dd6b20}
 .ai-review .k-blunder .tag{color:#fff;background:var(--err);border-color:var(--err)}
+.my-presets{margin-top:6px}
+.my-save{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px;background:var(--panel)}
+.my-save input{flex:1 1 180px;width:auto}
+.btn.sm.primary{padding:0 14px}
 .pgn{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
 .pgn summary{font-size:13px;font-weight:700;cursor:pointer}
 .pgn[open] summary{margin-bottom:8px}

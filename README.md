@@ -40,6 +40,7 @@ js/app/
   presets.js            Thế cờ và kịch bản mẫu (thêm bài giảng ở đây)
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
+  my-presets.js         Mẫu của tôi: lưu / xóa / tải xuống / mở danh sách mẫu (lưu trong trình duyệt)
   ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
   pikafish.js           Cầu nối tới máy Pikafish (Web Worker, UCI)
 engine/pikafish.js      Pikafish đơn luồng (WebAssembly, tạo bằng tools/pikafish/build.sh)
@@ -94,7 +95,12 @@ Pikafish phát hành theo giấy phép GPLv3; mã nguồn và bản vá nằm tr
 
 ## Thêm bài giảng
 
-Mở `js/app/presets.js`, thêm một mục `{ name, title, fen, script }` vào mảng `PRESETS`.
+Cách nhanh nhất, ngay trên trang: soạn thế cờ và kịch bản (hoặc nhập PGN), rồi bấm **“Lưu thành mẫu”** dưới ô “Mẫu có sẵn”
+(sau khi nhập PGN còn có nút **“Lưu vào mẫu có sẵn”** trong khung PGN). Mẫu hiện trong nhóm “Mẫu của tôi”; lưu trùng tên thì
+mẫu cũ được cập nhật. Mẫu nằm trong bộ nhớ của trình duyệt: muốn sao lưu hoặc dùng ở máy khác, bấm “Tải danh sách mẫu”
+để lấy file `.json`, rồi “Mở danh sách mẫu” ở máy kia.
+
+Muốn mẫu có sẵn cho mọi người dùng, mở `js/app/presets.js`, thêm một mục `{ name, title, fen, script }` vào mảng `PRESETS`.
 
 ## Thêm bộ âm thanh
 

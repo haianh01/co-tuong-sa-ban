@@ -1,9 +1,23 @@
 'use strict';
 const presetSel = $('preset'), titleIn = $('title'), fenIn = $('fen'), scriptIn = $('script'), styleSel = $('style'), speedSel = $('speed'), errBox = $('errors'), info = $('buildInfo');
-PRESETS.forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.name; presetSel.appendChild(o); });
-const custom = document.createElement('option'); custom.value = 'custom'; custom.textContent = 'Tự soạn'; presetSel.appendChild(custom);
+// Mẫu của tôi: người dùng lưu thêm, nằm trong localStorage của trình duyệt (xem js/app/my-presets.js).
+const MY_KEY = 'coTuongMyPresets';
+function myPresets() { try { const a = JSON.parse(localStorage.getItem(MY_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function saveMyPresets(list) { localStorage.setItem(MY_KEY, JSON.stringify(list)); }
+function renderPresetOptions(value) {
+  presetSel.innerHTML = '';
+  const add = (parent, v, text) => { const o = document.createElement('option'); o.value = v; o.textContent = text; parent.appendChild(o); };
+  const g1 = document.createElement('optgroup'); g1.label = 'Mẫu có sẵn'; presetSel.appendChild(g1);
+  PRESETS.forEach((p, i) => add(g1, i, p.name));
+  const mine = myPresets();
+  if (mine.length) { const g2 = document.createElement('optgroup'); g2.label = 'Mẫu của tôi'; presetSel.appendChild(g2); mine.forEach(p => add(g2, 'u:' + p.id, p.name)); }
+  add(presetSel, 'custom', 'Tự soạn');
+  presetSel.value = value != null && [...presetSel.options].some(o => o.value === String(value)) ? String(value) : 'custom';
+}
+renderPresetOptions(0);
 function showErrors(list) { if (!list.length) { errBox.style.display = 'none'; return; } errBox.style.display = 'block'; errBox.innerHTML = '<ul></ul>'; list.forEach(e => { const li = document.createElement('li'); li.textContent = e; errBox.firstChild.appendChild(li); }); }
-function loadPreset(i) { const p = PRESETS[i]; titleIn.value = p.title; fenIn.value = p.fen; scriptIn.value = p.script; if (window.refreshEditor) window.refreshEditor(); }
+function presetOf(v) { return String(v).startsWith('u:') ? myPresets().find(p => 'u:' + p.id === String(v)) : PRESETS[+v]; }
+function loadPreset(v) { const p = presetOf(v); if (!p) return; titleIn.value = p.title; fenIn.value = p.fen; scriptIn.value = p.script; if (window.refreshEditor) window.refreshEditor(); }
 function doBuild(autoplay) {
   let nt;
   try { nt = build({ fen: fenIn.value, title: titleIn.value.trim(), script: scriptIn.value, pace: +speedSel.value }); }
@@ -13,7 +27,7 @@ function doBuild(autoplay) {
   scrub.max = nt.DUR.toFixed(2); renderChapters();
   t = 0; playing = false; if (autoplay) play(); else syncButtons(); dirty = true;
 }
-presetSel.onchange = () => { if (presetSel.value !== 'custom') { loadPreset(+presetSel.value); doBuild(false); } };
+presetSel.onchange = () => { if (presetSel.value !== 'custom') { loadPreset(presetSel.value); doBuild(false); } if (window.onPresetChange) window.onPresetChange(); };
 for (const el of [titleIn, fenIn, scriptIn]) el.addEventListener('input', () => { presetSel.value = 'custom'; });
 $('startPos').onclick = () => $('edStart').click();
 const soundSel = $('sound');

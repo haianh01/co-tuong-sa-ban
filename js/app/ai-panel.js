@@ -438,10 +438,11 @@ const AIEngine = (() => {
     if (!text.trim()) { pgnSay('Hãy dán PGN vào ô trên hoặc mở một file .pgn.', true); return; }
     let r;
     try { r = pgnToScript(text); } catch (e) { pgnSay(`Không đọc được PGN: ${typeof e === 'string' ? e : e.message}`, true); return; }
-    if (!r.moves && r.errors.length) { pgnSay(r.errors.join(' '), true); return; }
+    if (!r.moves && r.errors.length) { pgnSay(r.errors.join(' '), true); $('pgnSave').hidden = true; return; }
     titleIn.value = r.title; fenIn.value = r.fen; scriptIn.value = r.script;
     for (const el of [titleIn, fenIn, scriptIn]) el.dispatchEvent(new Event('input', { bubbles: true }));
     Editor.setMode('record'); doBuild(false);
+    $('pgnSave').hidden = false; // cho lưu ván vừa nhập thành mẫu
     pgnSay(r.errors.length ? `Chỉ nhập được ${r.moves} nước đầu. ${r.errors.join(' ')}`
       : `Đã nhập ${r.moves} nước, mọi nước đều hợp lệ. Bấm “Kiểm duyệt kịch bản” để máy chấm từng nước.`, r.errors.length > 0);
   }
