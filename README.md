@@ -34,7 +34,10 @@ js/app/
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
   ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
+  pikafish.js           Cầu nối tới máy Pikafish (Web Worker, UCI)
+engine/pikafish.js      Pikafish biên dịch sang WebAssembly (tạo bằng tools/pikafish/build.sh)
 tools/build.py          Gộp tất cả thành một file dist/co-tuong-sa-ban.html
+tools/pikafish/         Vá và biên dịch Pikafish sang WebAssembly đơn luồng
 ```
 
 ## Trợ lý AI
@@ -46,6 +49,26 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 - **Nhập / xuất PGN**: dán hoặc mở file `.pgn`; mọi nước được kiểm tra đúng luật trước khi thành kịch bản. Xuất kịch bản ra PGN dạng tọa độ ICCS.
 
 Độ mạnh chỉnh bằng ô “Nhanh / Vừa / Kỹ” (thời gian suy nghĩ mỗi thế cờ).
+
+### Chọn máy tính cờ
+
+- **Máy có sẵn**: nhẹ, dùng được ngay, mức nghiệp dư khá.
+- **Pikafish (mạnh)**: [Pikafish](https://github.com/official-pikafish/Pikafish) là máy cờ tướng mã nguồn mở mạnh nhất hiện nay (mạng nơ-ron NNUE), vượt xa kỳ thủ người. Pikafish tuân theo luật châu Á về chiếu dai / đuổi dai.
+  Lần đầu chọn Pikafish, trang sẽ hướng dẫn:
+  1. Tải file mạng nơ-ron `pikafish.nnue` (khoảng 50 MB) từ bản phát hành chính thức.
+  2. Chọn file vừa tải. Trình duyệt lưu file này lại, những lần sau dùng được ngay.
+
+  Nếu chạy trang qua máy chủ web, có thể đặt sẵn file tại `engine/pikafish.nnue`, trang sẽ tự nạp.
+
+Pikafish được biên dịch thành bản đơn luồng nên chạy được cả khi mở `index.html` trực tiếp (không cần máy chủ hay header đặc biệt).
+Để biên dịch lại (cần [Emscripten](https://emscripten.org/)):
+
+```
+source /đường/dẫn/emsdk/emsdk_env.sh
+bash tools/pikafish/build.sh
+```
+
+Pikafish phát hành theo giấy phép GPLv3; mã nguồn và bản vá nằm trong `tools/pikafish/`.
 
 ## Thêm bài giảng
 
