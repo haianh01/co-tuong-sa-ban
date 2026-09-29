@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sa bàn chiến trường – Xưởng dựng video cờ tướng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@900&display=swap&text=帥仕相傌俥炮兵將士象馬車砲卒楚河漢界">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Sa bàn chiến trường<small>Xưởng dựng video cờ tướng: nhập thế cờ, máy tự quay</small></h1>
+    <p class="lede">Nhập thế cờ, nước đi và lời thoại ở phần bên dưới. Camera tự zoom vào từng nước, tự báo chiếu và chiếu bí, rồi bạn xuất thành file video.</p>
+  </header>
+
+  <section aria-label="Trình chiếu">
+    <div class="stage" id="stage">
+      <canvas id="cv" role="img" aria-label="Bàn cờ tướng 3D trên bàn trà, camera tự động theo nước đi"></canvas>
+      <button class="play-big" id="bigPlay" aria-label="Phát video"><span><svg viewBox="0 0 24 24"><path d="M5 3l16 9-16 9z" fill="#1d1208"/></svg></span></button>
+      <div class="rec-note" id="recNote">Đang quay video</div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="playBtn" aria-label="Phát"></button>
+      <button class="btn" id="restartBtn" aria-label="Xem lại từ đầu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+      <div class="scrub"><input type="range" id="scrub" min="0" max="10" step="0.01" value="0" aria-label="Tua video"><span class="time" id="time">0:00</span></div>
+      <select id="format" aria-label="Khung hình" class="fmt"></select>
+      <div class="seg" role="group" aria-label="Góc nhìn">
+        <button id="modeCine" aria-pressed="true">Sa bàn 2.5D</button>
+        <button id="modeFlat" aria-pressed="false">2D cổ điển</button>
+      </div>
+      <button class="btn" id="muteBtn" aria-label="Tắt tiếng"></button>
+      <button class="btn" id="exportBtn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span>Xuất video</span></button>
+    </div>
+    <ol class="chapters" id="chapters"></ol>
+  </section>
+
+  <section class="studio" aria-labelledby="studioTitle">
+    <h2 id="studioTitle">Dựng cảnh mới</h2>
+    <p>Sửa thế cờ và kịch bản, bấm “Dựng video”. Mọi hiệu ứng (vệt đường đi, chân Mã, ngòi Pháo, chiếu, chiếu bí, quân bị ăn bay ra bàn) được tạo tự động.</p>
+    <div class="editor">
+      <svg id="edBoard" viewBox="0 0 960 1080" role="application" aria-label="Bàn cờ tương tác: kéo thả hoặc bấm để di chuyển quân"></svg>
+      <div class="ed-side">
+        <div class="seg" role="group" aria-label="Chế độ bàn cờ">
+          <button id="edModeSetup" type="button" aria-pressed="true">1. Xếp thế cờ</button>
+          <button id="edModeRecord" type="button" aria-pressed="false">2. Ghi nước đi</button>
+        </div>
+        <p class="ed-status" id="edStatus" role="status"></p>
+        <div id="edSetupTools">
+          <p class="hint">Kéo quân để di chuyển, kéo ra ngoài bàn để bỏ quân. Hoặc chọn một quân trong khay rồi bấm vào giao điểm để đặt.</p>
+          <div class="tray" id="edTray"></div>
+          <div class="actions">
+            <button class="btn" id="edStart" type="button">Thế khai cuộc</button>
+            <button class="btn" id="edClear" type="button">Xóa bàn</button>
+            <select id="edSide" aria-label="Bên đi trước" class="fmt"><option value="r">Đỏ đi trước</option><option value="b">Đen đi trước</option></select>
+          </div>
+        </div>
+        <div id="edRecordTools" hidden>
+          <p class="hint">Bấm quân rồi bấm ô đích, hoặc kéo quân tới ô đích. Chấm xanh là nước đi hợp lệ. Mỗi nước được thêm vào kịch bản bên dưới; bạn gõ lời thoại sau dấu <code>|</code>.</p>
+          <div class="actions">
+            <button class="btn" id="edUndo" type="button">Lùi 1 nước</button>
+            <button class="btn" id="edNarr" type="button">Thêm lời dẫn</button>
+            <button class="btn" id="edClearMoves" type="button">Xóa các nước đi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div>
+        <div class="field">
+          <label for="preset">Mẫu có sẵn</label>
+          <select id="preset"></select>
+        </div>
+        <div class="field">
+          <label for="title">Tiêu đề video</label>
+          <input type="text" id="title">
+        </div>
+        <div class="field">
+          <label for="fen">Thế cờ (FEN)</label>
+          <textarea id="fen" class="code" rows="3" spellcheck="false"></textarea>
+          <p class="hint">Chữ hoa là Đỏ, chữ thường là Đen: <code>r</code> Xe, <code>n</code> Mã, <code>b</code> Tượng, <code>a</code> Sĩ, <code>k</code> Tướng, <code>c</code> Pháo, <code>p</code> Tốt. Hàng đầu tiên là hàng đáy của Đen. Cuối chuỗi: <code>w</code> Đỏ đi trước, <code>b</code> Đen đi trước. <button class="linkbtn" id="startPos" type="button">Dùng thế khai cuộc</button></p>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="style">Chất liệu quân</label>
+            <select id="style"><option value="wood">Gỗ hoàng dương</option><option value="jade">Ngọc bích</option><option value="marble">Đá cẩm thạch</option></select></div>
+          <div class="field"><label for="subs">Phụ đề trên video</label>
+            <select id="subs"><option value="0">Tắt (tự thu giọng đọc)</option><option value="1">Bật</option></select></div>
+          <div class="field"><label for="sound">Âm thanh quân cờ</label>
+            <div style="display:flex;gap:8px"><select id="sound"></select><button class="btn" id="previewSound" type="button" aria-label="Nghe thử bộ âm thanh"><svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg></button></div></div>
+          <div class="field"><label for="speed">Nhịp dựng</label>
+            <select id="speed"><option value="1">Vừa</option><option value="0.8">Nhanh</option><option value="1.25">Chậm, kỹ</option></select></div>
+        </div>
+      </div>
+      <div>
+        <div class="field">
+          <label for="script">Kịch bản (mỗi dòng một nhịp)</label>
+          <textarea id="script" class="code" rows="12" spellcheck="false"></textarea>
+          <p class="hint">Cú pháp: <code>nước đi | lời thoại</code>. Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu <code>.</code> tiến, <code>/</code> thoái, <code>-</code> bình. Hai quân cùng cột: <code>Xt.3</code> (trước), <code>Xs.3</code> (sau). Cũng nhận tọa độ kiểu <code>h2e2</code>. Dòng bắt đầu bằng <code>|</code> chỉ có lời thoại, camera giữ cảnh. Dòng bắt đầu bằng <code>//</code> bị bỏ qua.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="buildBtn">Dựng video</button>
+          <span class="ok" id="buildInfo"></span>
+        </div>
+        <div class="errors" id="errors" role="alert"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/core/utils.js"></script>
+<script src="js/core/engine.js"></script>
+<script src="js/core/timeline.js"></script>
+<script src="js/render/camera.js"></script>
+<script src="js/render/environment.js"></script>
+<script src="js/render/board.js"></script>
+<script src="js/render/pieces.js"></script>
+<script src="js/render/overlays.js"></script>
+<script src="js/render/scene.js"></script>
+<script src="js/audio/audio-engine.js"></script>
+<script src="js/audio/sound-packs.js"></script>
+<script src="js/app/controls.js"></script>
+<script src="js/app/export.js"></script>
+<script src="js/app/presets.js"></script>
+<script src="js/app/studio.js"></script>
+<script src="js/app/board-editor.js"></script>
+</body>
+</html>

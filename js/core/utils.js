@@ -1,0 +1,11 @@
+'use strict';
+const D2R = Math.PI / 180;
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, u) => a + (b - a) * u;
+const ease = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const smooth = (a, b, t) => { const u = clamp((t - a) / (b - a)); return u * u * (3 - 2 * u); };
+const win = (t, a, b, f = 0.35) => smooth(a, a + f, t) * (1 - smooth(b - f, b, t));
+const rand = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const UI = '"Be Vietnam Pro", system-ui, sans-serif';
+const CJK = '"Noto Serif TC", "Songti TC", "STSong", "SimSun", serif';
+const GOLD = '#ffc24f', RED = '#ff4433', GREEN = '#5fe08a', AMBER = '#ffb13b';
