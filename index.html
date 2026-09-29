@@ -42,7 +42,13 @@
     <h2 id="studioTitle">Dựng cảnh mới</h2>
     <p>Sửa thế cờ và kịch bản, bấm “Dựng video”. Mọi hiệu ứng (vệt đường đi, chân Mã, ngòi Pháo, chiếu, chiếu bí, quân bị ăn bay ra bàn) được tạo tự động.</p>
     <div class="editor">
-      <svg id="edBoard" viewBox="0 0 960 1080" role="application" aria-label="Bàn cờ tương tác: kéo thả hoặc bấm để di chuyển quân"></svg>
+      <div class="ed-boardwrap">
+        <div class="evalbar" id="evalBar" role="meter" aria-label="Thanh đánh giá thế cờ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" title="Thanh đánh giá: phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen">
+          <div class="evalbar-red" id="evalRed"></div>
+          <span class="evalbar-num" id="evalNum">–</span>
+        </div>
+        <svg id="edBoard" viewBox="0 0 960 1080" role="application" aria-label="Bàn cờ tương tác: kéo thả hoặc bấm để di chuyển quân"></svg>
+      </div>
       <div class="ed-side">
         <div class="seg" role="group" aria-label="Chế độ bàn cờ">
           <button id="edModeSetup" type="button" aria-pressed="true">1. Xếp thế cờ</button>
@@ -95,6 +101,7 @@
               <label class="btn sm" for="pfFile">2. Chọn file đã tải</label><input type="file" id="pfFile" accept=".nnue" hidden>
             </div>
           </div>
+          <label class="chk"><input type="checkbox" id="evalAuto" checked> Tự chấm thế cờ sau mỗi nước (thanh đánh giá cạnh bàn cờ)</label>
           <div class="actions">
             <button class="btn" id="aiHint" type="button">Gợi ý nước đi</button>
             <button class="btn" id="aiReview" type="button">Kiểm duyệt kịch bản</button>
