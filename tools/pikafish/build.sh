@@ -26,9 +26,13 @@ cd src
 # Bản wasm32 chính thức dùng -pthread (cần SharedArrayBuffer và header COOP/COEP);
 # bản này bỏ đa luồng để chạy được cả khi mở index.html trực tiếp.
 sed -i 's/CXXFLAGS += -pthread -msimd128/CXXFLAGS += -msimd128/; s/LDFLAGS += -pthread -sINITIAL_MEMORY=64MB -sALLOW_MEMORY_GROWTH -sSTACK_SIZE=3MB/LDFLAGS += -sINITIAL_MEMORY=128MB -sALLOW_MEMORY_GROWTH -sSTACK_SIZE=8MB/' Makefile
+# em++ -dumpversion trả về phiên bản Emscripten (6.x) nên Makefile tưởng clang < 16 và thêm cờ cũ không còn hỗ trợ.
+sed -i '/-fexperimental-new-pass-manager/d' Makefile
 
-make -j"$(nproc)" pikafish.js ARCH=wasm32 COMP=clang CXX=em++ \
-  EXTRACXXFLAGS="-DPF_WASM" \
+# bits=32: wasm32 (nếu không Makefile thêm -m64 thành wasm64, chưa chạy được trên Safari); vẫn định nghĩa
+# IS_64BIT vì Pikafish cần kiểu __int128 (clang hỗ trợ trên wasm32). RTLIB=compiler-rt: bỏ -latomic.
+make -j"$(nproc)" pikafish.js ARCH=wasm32 COMP=clang CXX=em++ bits=32 RTLIB=compiler-rt \
+  EXTRACXXFLAGS="-DPF_WASM -DIS_64BIT" \
   EXTRALDFLAGS="-sMODULARIZE=1 -sEXPORT_NAME=PikafishModule -sINVOKE_RUN=0 -sSINGLE_FILE=1 -sENVIRONMENT=worker \
     -sEXPORTED_FUNCTIONS=_pf_init,_pf_command -sEXPORTED_RUNTIME_METHODS=ccall,FS -sMAXIMUM_MEMORY=2GB"
 
