@@ -14,6 +14,8 @@ css/style.css           Giao diện
 js/core/
   utils.js              Hàm tiện ích, hằng số màu và font
   engine.js             Luật cờ tướng: đọc FEN, sinh nước hợp lệ, chiếu, ký hiệu X4.5
+  ai-core.js            Máy tính cờ: tìm kiếm alpha-beta, lượng giá thế cờ (chạy trong Web Worker)
+  pgn.js                Đọc / ghi PGN (ICCS, ký hiệu Việt, WXF, ký hiệu Trung Quốc)
   timeline.js           Biến kịch bản thành dòng thời gian: camera, hiệu ứng, âm thanh
 js/render/
   camera.js             Canvas, phép chiếu 3D, chuyển động camera
@@ -31,8 +33,19 @@ js/app/
   presets.js            Thế cờ và kịch bản mẫu (thêm bài giảng ở đây)
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
+  ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
 tools/build.py          Gộp tất cả thành một file dist/co-tuong-sa-ban.html
 ```
+
+## Trợ lý AI
+
+Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình duyệt, không cần mạng hay khóa API.
+
+- **Gợi ý nước đi**: tính 3 nước tốt nhất cho thế cờ ở cuối kịch bản, vẽ mũi tên trên bàn cờ kèm diễn biến dự đoán. Bấm “Đi nước này” để thêm vào kịch bản.
+- **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
+- **Nhập / xuất PGN**: dán hoặc mở file `.pgn`; mọi nước được kiểm tra đúng luật trước khi thành kịch bản. Xuất kịch bản ra PGN dạng tọa độ ICCS.
+
+Độ mạnh chỉnh bằng ô “Nhanh / Vừa / Kỹ” (thời gian suy nghĩ mỗi thế cờ).
 
 ## Thêm bài giảng
 

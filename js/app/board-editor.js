@@ -10,6 +10,8 @@
   const X = c => 80 + c * 100, Y = r => 90 + r * 100;
   const FEN_LETTER = { k: 'k', a: 'a', e: 'b', h: 'n', r: 'r', c: 'c', p: 'p' };
   let mode = 'setup', setupB = new Array(90).fill(null), setupSide = 'r', tool = null, sel = null, drag = null, fenError = '';
+  // Mũi tên gợi ý của Trợ lý AI; view = đang xem lại thế cờ trước một nước nào đó của kịch bản.
+  let hints = [], view = null;
 
   // ---------- helpers ----------
   const fire = el => el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -28,13 +30,14 @@
     return rows.join('/') + (side === 'r' ? ' w' : ' b');
   }
   const isMoveLine = l => { const s = l.trim(); return s && !s.startsWith('|') && !s.startsWith('//'); };
-  // Replays the script over the FEN and returns the resulting position.
-  function replay() {
+  // Replays the script over the FEN (at most `limit` moves) and returns the resulting position.
+  function replay(limit = Infinity) {
     const { B, side } = parseFEN(fenIn.value);
     let b = B, s = side, n = 0, err = '', last = null;
     const lines = scriptIn.value.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!isMoveLine(lines[i])) continue;
+      if (n >= limit) break;
       const mv = lines[i].split('|')[0].trim();
       try { const m = resolve(b, s, mv); last = m; b = apply(b, m); s = opp(s); n++; }
       catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}`; break; }
@@ -81,16 +84,17 @@
       status = fenError ? `FEN đang lỗi: ${fenError}` : setupWarnings();
     } else {
       let r;
-      try { r = replay(); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
+      try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
       if (r) {
         B = r.b; s = r.s; last = r.last;
         const moves = legal(B, s);
-        if (sel != null) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
+        if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
         over = moves.length === 0;
         status = r.err ? `Kịch bản dừng ở lỗi. ${r.err}` :
           over ? `${s === 'r' ? 'Đỏ' : 'Đen'} hết nước đi: ván cờ kết thúc sau ${r.n} nước.` :
           `Lượt ${s === 'r' ? 'Đỏ' : 'Đen'} đi${check >= 0 ? ' (đang bị chiếu)' : ''}. Đã ghi ${r.n} nước.`;
+        if (view) status = view.note || `Đang xem thế cờ sau ${r.n} nước. Bấm vào bàn cờ để quay lại.`;
       } else B = setupB;
     }
     let h = STATIC;
@@ -106,12 +110,21 @@
       const x = X(t % 9), y = Y((t / 9) | 0);
       h += B[t] ? `<circle cx="${x}" cy="${y}" r="50" fill="none" stroke="#2fbf6a" stroke-width="7"/>` : `<circle cx="${x}" cy="${y}" r="14" fill="#2fbf6a" opacity=".85"/>`;
     }
+    for (const a of (view ? view.hints : mode === 'record' ? hints : [])) h += arrowSvg(a.m[0], a.m[1], a.color, a.w || 16);
     if (drag && drag.moved && B[drag.from]) h += pieceSvg(B[drag.from], drag.x, drag.y, 'style="filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))"');
     svg.innerHTML = h;
     statusEl.textContent = status;
     $('edSetupTools').hidden = mode !== 'setup'; $('edRecordTools').hidden = mode !== 'record';
     $('edSide').value = setupSide;
     tray.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === (tool ? tool.side + tool.type : tool === null ? 'move' : 'erase'))));
+  }
+  function arrowSvg(f, t, color, w) {
+    const x1 = X(f % 9), y1 = Y((f / 9) | 0), x2 = X(t % 9), y2 = Y((t / 9) | 0);
+    const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len, head = w * 2.6;
+    const ex = x2 - ux * 18, ey = y2 - uy * 18, bx = ex - ux * head, by = ey - uy * head;
+    const px = -uy * w * 1.5, py = ux * w * 1.5;
+    return `<g opacity=".82" pointer-events="none"><line x1="${x1 + ux * 30}" y1="${y1 + uy * 30}" x2="${bx}" y2="${by}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>` +
+      `<polygon points="${ex},${ey} ${bx + px},${by + py} ${bx - px},${by - py}" fill="${color}"/></g>`;
   }
   function setupWarnings() {
     const kr = setupB.filter(p => p && p.side === 'r' && p.type === 'k').length, kb = setupB.filter(p => p && p.side === 'b' && p.type === 'k').length;
@@ -141,6 +154,7 @@
     return true;
   }
   svg.addEventListener('pointerdown', e => {
+    if (view) { view = null; render(); return; }
     const h = hit(e); if (h.sq == null) return;
     const cur = current(); if (!cur) return;
     if (mode === 'setup' && tool !== null) {
@@ -190,7 +204,7 @@
     const b = e.target.closest('button'); if (!b) return;
     const k = b.dataset.tool; tool = k === 'move' ? null : k === 'erase' ? 'erase' : { side: k[0], type: k[1] }; sel = null; render();
   });
-  const setMode = m => { mode = m; sel = null; tool = null; $('edModeSetup').setAttribute('aria-pressed', String(m === 'setup')); $('edModeRecord').setAttribute('aria-pressed', String(m === 'record')); readSetup(); render(); };
+  const setMode = m => { mode = m; sel = null; tool = null; view = null; hints = []; $('edModeSetup').setAttribute('aria-pressed', String(m === 'setup')); $('edModeRecord').setAttribute('aria-pressed', String(m === 'record')); readSetup(); render(); };
   $('edModeSetup').onclick = () => setMode('setup');
   $('edModeRecord').onclick = () => setMode('record');
   $('edSide').onchange = e => { setupSide = e.target.value; commitSetup(); };
@@ -204,8 +218,16 @@
   $('edNarr').onclick = () => { const s = scriptIn.value.replace(/\s+$/, ''); scriptIn.value = (s ? s + '\n' : '') + '| '; fire(scriptIn); scriptIn.focus(); scriptIn.setSelectionRange(scriptIn.value.length, scriptIn.value.length); };
 
   // keep in sync with typing in the fields and with preset changes
-  fenIn.addEventListener('input', () => { readSetup(); render(); });
-  scriptIn.addEventListener('input', () => { if (mode === 'record') render(); });
-  window.refreshEditor = () => { sel = null; readSetup(); render(); };
+  fenIn.addEventListener('input', () => { hints = []; view = null; readSetup(); render(); });
+  scriptIn.addEventListener('input', () => { hints = []; view = null; if (mode === 'record') render(); });
+  window.refreshEditor = () => { sel = null; hints = []; view = null; readSetup(); render(); };
+  // Cầu nối cho Trợ lý AI (js/app/ai-panel.js).
+  window.Editor = {
+    setMode: m => { if (mode !== m) setMode(m); },
+    position: () => replay(),
+    showHints: list => { view = null; hints = list || []; render(); },
+    view: (ply, list, note) => { if (mode !== 'record') setMode('record'); view = { ply, hints: list || [], note }; render(); svg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
+    play: m => { if (mode !== 'record') setMode('record'); view = null; const cur = current(); if (!cur || cur.err) return false; return recordMove(m[0], m[1]); }
+  };
   readSetup(); render();
 })();
