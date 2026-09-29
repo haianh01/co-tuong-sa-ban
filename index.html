@@ -73,11 +73,23 @@
         <div class="ai-box" role="region" aria-labelledby="aiTitle">
           <div class="ai-head">
             <h3 id="aiTitle">Trợ lý AI</h3>
-            <select id="aiLevel" class="fmt" aria-label="Thời gian máy suy nghĩ">
-              <option value="600">Nhanh</option><option value="1500" selected>Vừa</option><option value="4000">Kỹ</option>
-            </select>
+            <div class="ai-opts">
+              <select id="aiEngine" class="fmt" aria-label="Máy tính cờ">
+                <option value="builtin">Máy có sẵn</option><option value="pikafish">Pikafish (mạnh)</option>
+              </select>
+              <select id="aiLevel" class="fmt" aria-label="Thời gian máy suy nghĩ">
+                <option value="600">Nhanh</option><option value="1500" selected>Vừa</option><option value="4000">Kỹ</option>
+              </select>
+            </div>
           </div>
           <p class="hint">Máy tự tính ngay trên trình duyệt, không cần mạng. Gợi ý dành cho thế cờ ở cuối kịch bản; kiểm duyệt chấm lần lượt từng nước trong kịch bản.</p>
+          <div class="pf-box" id="pfBox" hidden>
+            <p class="hint" id="pfMsg" role="status"></p>
+            <div class="actions" id="pfNeedNet" hidden>
+              <a class="btn sm" id="pfDownload" href="#" target="_blank" rel="noopener">1. Tải pikafish.nnue</a>
+              <label class="btn sm" for="pfFile">2. Chọn file đã tải</label><input type="file" id="pfFile" accept=".nnue" hidden>
+            </div>
+          </div>
           <div class="actions">
             <button class="btn" id="aiHint" type="button">Gợi ý nước đi</button>
             <button class="btn" id="aiReview" type="button">Kiểm duyệt kịch bản</button>
@@ -160,6 +172,7 @@
 <script src="js/app/presets.js"></script>
 <script src="js/app/studio.js"></script>
 <script src="js/app/board-editor.js"></script>
+<script src="js/app/pikafish.js"></script>
 <script src="js/app/ai-panel.js"></script>
 </body>
 </html>

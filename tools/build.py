@@ -16,6 +16,12 @@ def inline_js(m):
 html = re.sub(r'<link rel="stylesheet" href="(css/[^"]+)">', inline_css, html)
 html = re.sub(r'<script src="(js/[^"]+)"></script>', inline_js, html)
 
+# Pikafish (nếu đã build) được nhúng luôn để file gộp dùng được máy mạnh.
+# Mạng nơ-ron pikafish.nnue thì không nhúng: người dùng chọn file một lần trên trang.
+pf = root / 'engine' / 'pikafish.js'
+if pf.exists():
+    html = html.replace('</body>', '<script>\n' + pf.read_text(encoding='utf-8') + '</script>\n</body>')
+
 out = root / 'dist' / 'co-tuong-sa-ban.html'
 out.parent.mkdir(exist_ok=True)
 out.write_text(html, encoding='utf-8')

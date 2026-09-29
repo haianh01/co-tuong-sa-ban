@@ -1,0 +1,4 @@
+dist/
+tools/pikafish/.build/
+# Mạng nơ-ron của Pikafish (~50 MB): tải riêng, không đưa vào repo.
+*.nnue
