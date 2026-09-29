@@ -253,7 +253,9 @@ const AIEngine = (() => {
     try {
       await PikafishEngine.start();
       AIEngine.setKind('pikafish');
-      pfSay('Pikafish sẵn sàng. Máy chạy ngay trên trình duyệt, không cần mạng.');
+      const n = (PikafishEngine.info() || {}).threads || 1;
+      pfSay(n > 1 ? `Pikafish sẵn sàng, chạy ${n} luồng song song. Máy chạy ngay trên trình duyệt, không cần mạng.`
+        : 'Pikafish sẵn sàng (đơn luồng). Máy chạy ngay trên trình duyệt, không cần mạng. Muốn nhanh hơn nhiều lần: mở trang bằng tools/serve.py để chạy đa luồng.');
       return true;
     } catch (e) {
       if (e.code === 'NO_NET') {

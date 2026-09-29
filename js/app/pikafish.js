@@ -1,6 +1,8 @@
 'use strict';
-// Cầu nối tới Pikafish (máy cờ tướng mạnh nhất hiện nay, GPLv3) biên dịch sang WebAssembly đơn luồng.
-// - Mã máy (engine/pikafish.js, tạo bằng tools/pikafish/build.sh) được nạp khi cần, chạy trong Web Worker.
+// Cầu nối tới Pikafish (máy cờ tướng mạnh nhất hiện nay, GPLv3) biên dịch sang WebAssembly.
+// - Mã máy (tạo bằng tools/pikafish/build.sh) được nạp khi cần, chạy trong Web Worker:
+//   engine/pikafish-mt.js (đa luồng) khi trang có SharedArrayBuffer, tức được phục vụ kèm header
+//   COOP/COEP (tools/serve.py); còn lại engine/pikafish.js (đơn luồng, chạy được cả với file://).
 // - Mạng nơ-ron pikafish.nnue (~50 MB) không nằm trong repo: trang thử tải engine/pikafish.nnue
 //   (khi chạy qua máy chủ web), nếu không được thì người dùng chọn file một lần; file được lưu trong
 //   IndexedDB của trình duyệt để lần sau dùng ngay.
@@ -11,6 +13,11 @@ const PikafishEngine = (() => {
   const DB = 'co-tuong-pikafish', STORE = 'files', KEY = 'pikafish.nnue';
   const FEN_LETTER = [null, 'k', 'a', 'b', 'n', 'r', 'c', 'p'];
   let nnue = null, worker = null, ready = null, job = null, seq = 0;
+  // Đa luồng cần SharedArrayBuffer, trình duyệt chỉ bật khi trang "cross-origin isolated".
+  const canMT = self.crossOriginIsolated === true && typeof SharedArrayBuffer === 'function';
+  const hw = navigator.hardwareConcurrency || 4;
+  const THREADS = Math.max(1, Math.min(hw - 1, 16)); // chừa một nhân cho giao diện
+  let mode = null; // { threads } sau khi khởi động
 
   // ---------- lưu mạng nơ-ron trong IndexedDB ----------
   function idb(mode, fn) {
@@ -52,24 +59,31 @@ const PikafishEngine = (() => {
   }
 
   // ---------- nạp mã máy ----------
-  function loadScript() {
-    if (window.PIKAFISH_SRC) return Promise.resolve();
+  function loadScript(file, v) {
+    if (window[v]) return Promise.resolve(window[v]);
     return new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = 'engine/pikafish.js';
+      s.src = 'engine/' + file;
       const fail = msg => { const e = new Error(msg); e.code = 'NO_SCRIPT'; rej(e); };
-      s.onload = () => window.PIKAFISH_SRC ? res() : fail('engine/pikafish.js không hợp lệ.');
-      s.onerror = () => fail('Không nạp được engine/pikafish.js. Hãy chạy tools/pikafish/build.sh để tạo file này.');
+      s.onload = () => window[v] ? res(window[v]) : fail(`engine/${file} không hợp lệ.`);
+      s.onerror = () => fail(`Không nạp được engine/${file}. Hãy chạy tools/pikafish/build.sh để tạo file này.`);
       document.head.appendChild(s);
     });
   }
+  // Bản đa luồng nếu dùng được, không thì bản đơn luồng.
+  async function loadEngine() {
+    if (canMT) { try { return { src: await loadScript('pikafish-mt.js', 'PIKAFISH_MT_SRC'), mt: true }; } catch (e) { /* dùng bản đơn luồng */ } }
+    return { src: await loadScript('pikafish.js', 'PIKAFISH_SRC'), mt: false };
+  }
+  // Chạy sau mã máy trong cùng Worker. Luồng con của bản đa luồng nạp lại chính script này
+  // (tên "em-pthread") và tự xử lý tin nhắn, nên không được gắn onmessage ở đó.
   const GLUE = `
 let mod = null;
-onmessage = async e => {
+if (self.name !== 'em-pthread') onmessage = async e => {
   const d = e.data;
   try {
     if (d.type === 'init') {
-      mod = await PikafishModule({ print: l => postMessage({ type: 'line', line: l }), printErr: l => postMessage({ type: 'line', line: l }) });
+      mod = await PikafishModule({ pfPoolSize: d.pool, print: l => postMessage({ type: 'line', line: l }), printErr: l => postMessage({ type: 'line', line: l }) });
       mod.FS.writeFile('/pikafish.nnue', new Uint8Array(d.nnue));
       mod.ccall('pf_init', null, [], []);
       try { mod.FS.unlink('/pikafish.nnue'); } catch (_) {}
@@ -82,7 +96,7 @@ onmessage = async e => {
 };`;
   function reset() {
     if (worker) worker.terminate();
-    worker = null; ready = null;
+    worker = null; ready = null; mode = null;
     if (job) { const j = job; job = null; j.reject(new Error('stopped')); }
   }
   // Khởi động worker (nếu chưa). Trả về Promise, lỗi nếu thiếu mạng nơ-ron hoặc mã máy.
@@ -91,9 +105,9 @@ onmessage = async e => {
     ready = (async () => {
       const net = await findNet();
       if (!net) { const e = new Error('Chưa có mạng nơ-ron pikafish.nnue.'); e.code = 'NO_NET'; throw e; }
-      await loadScript();
-      const url = URL.createObjectURL(new Blob([window.PIKAFISH_SRC, GLUE], { type: 'text/javascript' }));
-      const w = new Worker(url); worker = w;
+      const eng = await loadEngine();
+      const url = URL.createObjectURL(new Blob([eng.src, GLUE], { type: 'text/javascript' }));
+      const w = new Worker(url, { name: 'pikafish' }); worker = w;
       await new Promise((res, rej) => {
         const errs = [];
         w.onmessage = e => {
@@ -103,10 +117,13 @@ onmessage = async e => {
           else if (d.type === 'fatal') rej(new Error(errs.concat(d.error).join(' ')));
         };
         w.onerror = e => { e.preventDefault(); rej(new Error(e.message || 'Worker của Pikafish bị lỗi.')); };
-        w.postMessage({ type: 'init', nnue: net });
+        // Luồng tìm kiếm tạo sẵn: THREADS + 2 (dự phòng lúc đổi số luồng).
+        w.postMessage({ type: 'init', nnue: net, pool: eng.mt ? THREADS + 2 : 0 });
       });
+      if (eng.mt) await raw([`setoption name Threads value ${THREADS}`, 'setoption name Hash value 64', 'isready']);
       // Thử một nước để chắc mạng nơ-ron đọc được.
       await raw(['position startpos', 'go depth 1']);
+      mode = { threads: eng.mt ? THREADS : 1 };
       return true;
     })();
     ready.catch(e => {
@@ -117,15 +134,18 @@ onmessage = async e => {
     return ready;
   }
 
-  // Gửi một loạt lệnh UCI, gom các dòng trả lời cho đến khi lệnh cuối chạy xong.
+  // Gửi một loạt lệnh UCI, gom các dòng trả lời cho đến khi lệnh cuối chạy xong. Với "go", chờ tới
+  // dòng "bestmove" (bản đa luồng trả về ngay, luồng tìm kiếm in kết quả sau).
   function raw(cmds, onLine) {
     return new Promise((resolve, reject) => {
       const id = ++seq, lines = [], j = { resolve, reject };
+      let sent = false, best = !cmds[cmds.length - 1].startsWith('go');
+      const finish = () => { if (sent && best) { if (job === j) job = null; resolve(lines); } };
       job = j;
       worker.onmessage = e => {
         const d = e.data;
-        if (d.type === 'line') { lines.push(d.line); if (onLine) onLine(d.line); }
-        else if (d.type === 'cmd-done' && d.id === id) { if (job === j) job = null; resolve(lines); }
+        if (d.type === 'line') { lines.push(d.line); if (onLine) onLine(d.line); if (d.line.startsWith('bestmove')) { best = true; finish(); } }
+        else if (d.type === 'cmd-done' && d.id === id) { sent = true; finish(); }
         else if (d.type === 'fatal') { if (job === j) job = null; reject(new Error(lines.filter(l => /error/i.test(l)).concat(d.error).join(' '))); }
       };
       worker.onerror = e => { e.preventDefault(); if (job === j) job = null; reject(new Error(e.message || 'Pikafish bị lỗi.')); };
@@ -163,7 +183,10 @@ onmessage = async e => {
   // opts giống xqAICore.analyze: { board, side, time, maxDepth, multi, only }
   async function analyze(opts, progress) {
     await start();
-    const t0 = performance.now(), multi = Math.max(1, opts.multi || 1), infos = [];
+    const t0 = performance.now(), multi = Math.max(1, opts.multi || 1);
+    // Mỗi vòng tìm kiếm in lại đủ các dòng MultiPV (bắt đầu từ multipv 1). Hết giờ giữa vòng thì vòng
+    // cuối chỉ có vài dòng: lấy vòng cuối trước, thiếu thì bù từ vòng trước, bỏ nước trùng.
+    let cur = [], prev = [];
     let go = `go movetime ${Math.max(50, Math.round(opts.time || 1000))}`;
     if (opts.maxDepth) go = `go depth ${opts.maxDepth} movetime ${Math.round((opts.time || 1000) * 2)}`;
     if (opts.only && opts.only.length) go += ' searchmoves ' + opts.only.map(toUci).join(' ');
@@ -171,17 +194,19 @@ onmessage = async e => {
     await raw([`setoption name MultiPV value ${multi}`, `position fen ${fenOf(opts.board, opts.side)}`, go], line => {
       if (line.startsWith('bestmove')) { best = line.split(/\s+/)[1]; return; }
       const info = parseInfo(line); if (!info) return;
-      infos[info.multipv - 1] = info; nodes = Math.max(nodes, info.nodes);
+      if (info.multipv === 1 && cur.length) { prev = cur; cur = []; }
+      cur[info.multipv - 1] = info; nodes = Math.max(nodes, info.nodes);
       if (info.multipv === 1 && progress) progress({ depth: info.depth, score: info.score, pv: info.pv, nodes: info.nodes });
     });
     const res = { lines: [], depth: 0, nodes, ms: Math.round(performance.now() - t0), engine: 'pikafish' };
     if (!best || best === '(none)') return res;
-    const lines = infos.filter(Boolean);
+    const lines = [];
+    for (const l of cur.concat(prev)) if (l && lines.length < multi && !lines.some(x => x.pv[0] + '' === l.pv[0] + '')) lines.push(l);
     if (!lines.length) lines.push({ depth: 0, score: 0, pv: [fromUci(best)] });
     res.lines = lines.map(l => ({ move: l.pv[0], score: l.score, pv: l.pv, depth: l.depth }));
     res.depth = res.lines[0].depth;
     return res;
   }
 
-  return { analyze, start, stop: reset, useFile, hasNet: async () => !!(await findNet()), forget: () => { reset(); nnue = null; return cacheDel(); }, NNUE_URL };
+  return { analyze, start, stop: reset, useFile, info: () => mode, canMT, hasNet: async () => !!(await findNet()), forget: () => { reset(); nnue = null; return cacheDel(); }, NNUE_URL };
 })();

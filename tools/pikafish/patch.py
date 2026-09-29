@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Vá mã nguồn Pikafish để chạy đơn luồng trong Web Worker (không cần SharedArrayBuffer).
+"""Vá mã nguồn Pikafish để chạy trong Web Worker và nhận lệnh UCI từ JavaScript.
 
-- Thread: không tạo luồng thật; mọi việc (kể cả tìm kiếm) chạy ngay trên luồng gọi.
-- UCI: vòng lặp đọc lệnh từ hàng đợi thay cho stdin, xử lý hết hàng đợi thì trả về.
-- main.cpp: xuất hai hàm pf_init() và pf_command(cmd) cho JavaScript gọi.
-Mọi thay đổi nằm trong #ifdef PF_WASM nên bản build thường không bị ảnh hưởng.
+- PF_WASM (cả hai bản): vòng lặp UCI đọc lệnh từ hàng đợi thay cho stdin, xử lý hết hàng đợi thì
+  trả về; main.cpp xuất hai hàm pf_init() và pf_command(cmd) cho JavaScript gọi.
+- PF_SINGLE_THREAD (bản đơn luồng): Thread không tạo luồng thật; mọi việc (kể cả tìm kiếm) chạy
+  ngay trên luồng gọi, nên "go" chạy xong mới trả về.
+Bản đa luồng giữ nguyên luồng của Pikafish (pthread, cần SharedArrayBuffer): "go" trả về ngay,
+kết quả "bestmove" in ra từ luồng tìm kiếm.
+Bản build thường (không định nghĩa hai macro trên) không bị ảnh hưởng.
 Chạy:  python3 patch.py <thư mục src của Pikafish>
 """
 import pathlib, sys
@@ -15,7 +18,7 @@ src = pathlib.Path(sys.argv[1])
 def patch(name, old, new):
     p = src / name
     s = p.read_text(encoding='utf-8')
-    if 'PF_WASM' in s and new in s:
+    if new in s:
         return
     if s.count(old) != 1:
         sys.exit(f'Không vá được {name}: không tìm thấy đoạn cần sửa (Pikafish đã đổi mã?)')
@@ -24,7 +27,7 @@ def patch(name, old, new):
 
 # ---------- thread.h ----------
 patch('thread.h', '    NativeThread              stdThread;\n',
-      '#ifndef PF_WASM\n    NativeThread              stdThread;\n#endif\n')
+      '#ifndef PF_SINGLE_THREAD\n    NativeThread              stdThread;\n#endif\n')
 
 # ---------- thread.cpp ----------
 patch('thread.cpp', '''    totalNuma(totalNumaCount),
@@ -37,13 +40,13 @@ patch('thread.cpp', '''    totalNuma(totalNumaCount),
         std::exit(EXIT_FAILURE);
     }
 ''', '''    totalNuma(totalNumaCount)
-#ifndef PF_WASM
+#ifndef PF_SINGLE_THREAD
     ,
     stdThread(
       create_native_thread(NativeThreadOptions{}.setLargeStack(true), &Thread::idle_loop, this))
 #endif
 {
-#ifdef PF_WASM
+#ifdef PF_SINGLE_THREAD
     searching = false;  // no native thread: jobs run synchronously on the caller
 #else
     if (!stdThread.joinable())
@@ -56,7 +59,7 @@ patch('thread.cpp', '''    totalNuma(totalNumaCount),
 patch('thread.cpp', '''    exit = true;
     start_searching();
     stdThread.join();
-}''', '''#ifndef PF_WASM
+}''', '''#ifndef PF_SINGLE_THREAD
     exit = true;
     start_searching();
     stdThread.join();
@@ -64,7 +67,7 @@ patch('thread.cpp', '''    exit = true;
 }''')
 patch('thread.cpp', '''void Thread::run_custom_job(std::function<void()> f) {
 ''', '''void Thread::run_custom_job(std::function<void()> f) {
-#ifdef PF_WASM
+#ifdef PF_SINGLE_THREAD
     f();
     return;
 #endif
@@ -86,6 +89,7 @@ patch('uci.cpp', '''        if (cli.argc == 1
 #endif
 ''')
 patch('uci.cpp', 'void UCIEngine::loop() {\n', '''#ifdef PF_WASM
+std::deque<std::string>& pf_pending_commands();
 std::deque<std::string>& pf_pending_commands() {
     static std::deque<std::string> q;
     return q;
@@ -109,6 +113,9 @@ namespace Stockfish {
 std::deque<std::string>& pf_pending_commands();
 }
 
+extern "C" void pf_init();
+extern "C" void pf_command(const char* cmd);
+
 static std::unique_ptr<UCIEngine> pf_uci;
 
 // Called once from JavaScript after pikafish.nnue has been written to the virtual file system.
@@ -121,7 +128,8 @@ extern "C" EMSCRIPTEN_KEEPALIVE void pf_init() {
     pf_uci              = std::make_unique<UCIEngine>(CommandLine(1, argv));
 }
 
-// Runs one UCI command. "go" blocks until the search is finished (use movetime or depth).
+// Runs one UCI command. Single-threaded build: "go" blocks until the search is finished.
+// Multi-threaded build: "go" returns at once and "bestmove" is printed by the search thread.
 extern "C" EMSCRIPTEN_KEEPALIVE void pf_command(const char* cmd) {
     Stockfish::pf_pending_commands().emplace_back(cmd);
     pf_uci->loop();
@@ -129,4 +137,4 @@ extern "C" EMSCRIPTEN_KEEPALIVE void pf_command(const char* cmd) {
 #endif
 '''
     main.write_text(s, encoding='utf-8')
-print('Đã vá Pikafish cho WebAssembly đơn luồng.')
+print('Đã vá Pikafish cho WebAssembly.')
