@@ -33,7 +33,9 @@ const AIEngine = (() => {
     } catch (e) { canWorker = false; worker = null; }
     return worker;
   }
+  let kind = 'builtin'; // 'builtin' = máy có sẵn (js/core/ai-core.js), 'pikafish' = js/app/pikafish.js
   function analyze(opts, progress) {
+    if (kind === 'pikafish') return PikafishEngine.analyze(opts, progress);
     return new Promise((resolve, reject) => {
       if (job) stop();
       const j = { id: ++seq, opts, progress, resolve, reject };
@@ -41,12 +43,13 @@ const AIEngine = (() => {
     });
   }
   function stop() {
+    if (kind === 'pikafish') PikafishEngine.stop();
     if (!job) return;
     const j = job; job = null;
     if (worker) { worker.terminate(); worker = null; }
     j.reject(new Error('stopped'));
   }
-  return { analyze, stop };
+  return { analyze, stop, setKind: k => { kind = k; } };
 })();
 
 (() => {
@@ -69,7 +72,7 @@ const AIEngine = (() => {
   }
   function pvText(B, side, pv, max = 8) {
     const o = []; let b = B, s = side;
-    for (const m of pv.slice(0, max)) { o.push(nota(b, s, m)); b = apply(b, m); s = opp(s); }
+    try { for (const m of pv.slice(0, max)) { o.push(nota(b, s, m)); b = apply(b, m); s = opp(s); } } catch (e) { /* diễn biến lạ: dừng ở đây */ }
     return o.join(' ');
   }
   // Điểm nhìn từ phía Đỏ: dương là Đỏ ưu, 1,0 ≈ một Tốt.
@@ -104,6 +107,7 @@ const AIEngine = (() => {
     }
     const { b: B, s: side } = pos;
     if (!legal(B, side).length) { say(`${sideName(side)} đã hết nước đi: ván cờ kết thúc.`); out.innerHTML = ''; return; }
+    if (!(await prepareEngine())) return;
     setBusy(true); out.innerHTML = '';
     say(`Máy đang tính cho ${sideName(side)}…`);
     let res;
@@ -114,7 +118,7 @@ const AIEngine = (() => {
     } catch (e) { setBusy(false); say(e.message === 'stopped' ? 'Đã dừng.' : `Lỗi khi tính: ${e.message || e}`, e.message !== 'stopped'); return; }
     setBusy(false);
     const lines = res.lines;
-    say(`Lượt ${sideName(side)}. Máy đã xét ${res.nodes.toLocaleString('vi-VN')} thế cờ, sâu ${res.depth} nửa nước.`);
+    say(`Lượt ${sideName(side)}. ${res.engine === 'pikafish' ? 'Pikafish' : 'Máy có sẵn'} đã xét ${res.nodes.toLocaleString('vi-VN')} thế cờ, độ sâu ${res.depth}.`);
     out.innerHTML = `<ol class="ai-list">${lines.map((l, i) => `<li><span class="ai-dot" style="background:${ARROW[i]}"></span>` +
       `<span class="ai-main"><b>${esc(nota(B, side, l.move))}</b> <span class="ai-ev">${esc(scoreText(l.score, side))}</span>` +
       `<span class="ai-pv">${esc(pvText(B, side, l.pv))}</span></span>` +
@@ -160,6 +164,7 @@ const AIEngine = (() => {
     try { data = readPlies(); } catch (e) { say(`Thế cờ chưa hợp lệ: ${e}`, true); return; }
     const { plies, err, s0 } = data;
     if (!plies.length) { say(err || 'Kịch bản chưa có nước đi nào để kiểm duyệt.', !!err); out.innerHTML = ''; return; }
+    if (!(await prepareEngine())) return;
     setBusy(true); out.innerHTML = '';
     const snapshot = fenIn.value + '\n' + scriptIn.value, T = Math.round(timeBudget() * 0.6);
     let stopped = false;
@@ -233,6 +238,44 @@ const AIEngine = (() => {
       say(`Đã chèn ${flagged.length} dòng nhận xét vào kịch bản. Bấm “Dựng video” để xem.`);
     };
   }
+
+  // ---------- chọn máy: có sẵn hoặc Pikafish ----------
+  const engineSel = $('aiEngine'), pfBox = $('pfBox'), pfMsg = $('pfMsg'), pfNeedNet = $('pfNeedNet');
+  $('pfDownload').href = PikafishEngine.NNUE_URL;
+  try { if (localStorage.getItem('aiEngine') === 'pikafish') engineSel.value = 'pikafish'; } catch (e) { /* bỏ qua */ }
+  function pfSay(msg, isErr) { pfMsg.textContent = msg; pfMsg.classList.toggle('err', !!isErr); }
+  // Chuẩn bị máy đang chọn; trả về false nếu Pikafish chưa dùng được (đã hiện hướng dẫn).
+  async function prepareEngine() {
+    const pf = engineSel.value === 'pikafish';
+    pfBox.hidden = !pf; AIEngine.setKind('builtin');
+    if (!pf) return true;
+    pfNeedNet.hidden = true; pfSay('Đang khởi động Pikafish…');
+    try {
+      await PikafishEngine.start();
+      AIEngine.setKind('pikafish');
+      pfSay('Pikafish sẵn sàng. Máy chạy ngay trên trình duyệt, không cần mạng.');
+      return true;
+    } catch (e) {
+      if (e.code === 'NO_NET') {
+        pfNeedNet.hidden = false;
+        pfSay('Pikafish cần file mạng nơ-ron pikafish.nnue (khoảng 50 MB). Bước 1: tải file về. Bước 2: chọn file vừa tải. Trình duyệt sẽ nhớ file này cho những lần sau.');
+      } else pfSay(`Chưa khởi động được Pikafish: ${e.message || e}`, true);
+      say('Pikafish chưa sẵn sàng, xem hướng dẫn ở trên. Hoặc chọn “Máy có sẵn”.', true);
+      return false;
+    }
+  }
+  engineSel.onchange = () => {
+    try { localStorage.setItem('aiEngine', engineSel.value); } catch (e) { /* bỏ qua */ }
+    if (busy) AIEngine.stop();
+    say(''); prepareEngine();
+  };
+  $('pfFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    pfNeedNet.hidden = true; pfSay(`Đang nạp ${f.name}…`);
+    try { await PikafishEngine.useFile(f); } catch (err) { pfNeedNet.hidden = false; pfSay(err.message || String(err), true); return; }
+    if (await prepareEngine()) say('Đã sẵn sàng. Bấm “Gợi ý nước đi” hoặc “Kiểm duyệt kịch bản”.');
+  };
+  if (engineSel.value === 'pikafish') prepareEngine();
 
   hintBtn.onclick = suggest;
   reviewBtn.onclick = review;
