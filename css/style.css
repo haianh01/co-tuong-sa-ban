@@ -69,7 +69,12 @@ textarea.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-s
 .ai-box{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ai-head h3{margin:0;font-size:16px}
+.ai-head{flex-wrap:wrap}
 .ai-head .fmt{height:34px}
+.ai-opts{display:flex;gap:6px;flex-wrap:wrap}
+.pf-box{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--field)}
+.pf-box .hint.err{color:var(--err)}
+a.btn{text-decoration:none}
 .ai-status{margin:0;font-size:13px;font-weight:600;min-height:1.4em}
 .ai-status.err,.ok.err{color:var(--err)}
 .btn.sm{height:32px;font-size:13px;padding:0 10px}
