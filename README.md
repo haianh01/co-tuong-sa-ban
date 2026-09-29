@@ -69,17 +69,17 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
   Nếu chạy trang qua máy chủ web, có thể đặt sẵn file tại `engine/pikafish.nnue`, trang sẽ tự nạp.
 
-Pikafish có hai bản, trang tự chọn:
+Chọn **số luồng** ngay trong khung Trợ lý AI (hiện ra khi chọn Pikafish). Cách chạy nhiều luồng tùy cách mở trang:
 
-| Cách mở trang | Bản Pikafish | Tốc độ |
-|---|---|---|
-| `python3 tools/serve.py` rồi vào http://localhost:8000 | Đa luồng (số nhân CPU trừ 1, tối đa 16) | Nhanh gấp khoảng (số luồng) lần |
-| Nhấp đúp `index.html`, hoặc file gộp trong `dist/` | Đơn luồng | Vẫn vượt xa kỳ thủ người |
+| Cách mở trang | Nhiều luồng chạy thế nào | Gợi ý nước đi | Kiểm duyệt kịch bản |
+|---|---|---|---|
+| `python3 tools/serve.py` rồi vào http://localhost:8000 | **Chung bộ nhớ**: một bản Pikafish chạy N luồng (tối đa 16) | Nhanh gấp khoảng N lần | Tính sâu hơn |
+| Nhấp đúp `index.html`, hoặc file gộp trong `dist/` | **Nhiều bản song song**: N bản Pikafish độc lập (tối đa 4, mỗi bản khoảng 450 MB bộ nhớ) | Chia các nước đi cho N bản rồi gộp | Chấm N nước cùng lúc, nhanh gần gấp N lần |
 
-Đa luồng cần `SharedArrayBuffer`, mà trình duyệt chỉ bật khi trang được gửi kèm header
-`Cross-Origin-Opener-Policy: same-origin` và `Cross-Origin-Embedder-Policy`. Mở file trực tiếp thì không có header,
-nên trang dùng bản đơn luồng. Nếu đưa trang lên máy chủ web khác, hãy cấu hình hai header này
-(`tools/serve.py` dùng `credentialless` để font Google Fonts vẫn tải được).
+Đa luồng chung bộ nhớ cần `SharedArrayBuffer`, mà trình duyệt chỉ bật khi trang được gửi kèm header
+`Cross-Origin-Opener-Policy: same-origin` và `Cross-Origin-Embedder-Policy`. Mở file trực tiếp thì không có header
+(và không thể bật bằng code trong trang), nên trang dùng cách nhiều bản song song. Nếu đưa trang lên máy chủ web khác,
+hãy cấu hình hai header này (`tools/serve.py` dùng `credentialless` để font Google Fonts vẫn tải được).
 
 Để biên dịch lại (cần [Emscripten](https://emscripten.org/)):
 

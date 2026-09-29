@@ -49,7 +49,9 @@ const AIEngine = (() => {
     if (worker) { worker.terminate(); worker = null; }
     j.reject(new Error('stopped'));
   }
-  return { analyze, stop, setKind: k => { kind = k; } };
+  // Số lần phân tích chạy song song được: Pikafish nhiều bản thì > 1, máy có sẵn luôn 1.
+  const lanes = () => (kind === 'pikafish' ? PikafishEngine.lanes() : 1);
+  return { analyze, stop, lanes, setKind: k => { kind = k; } };
 })();
 
 (() => {
@@ -112,7 +114,7 @@ const AIEngine = (() => {
     say(`Máy đang tính cho ${sideName(side)}…`);
     let res;
     try {
-      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3 }, info => {
+      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3, moves: legal(B, side) }, info => {
         say(`Máy đang tính cho ${sideName(side)}: độ sâu ${info.depth}, tạm chọn ${pvText(B, side, info.pv, 1)} (${scoreText(info.score, side)})`);
       });
     } catch (e) { setBusy(false); say(e.message === 'stopped' ? 'Đã dừng.' : `Lỗi khi tính: ${e.message || e}`, e.message !== 'stopped'); return; }
@@ -142,7 +144,7 @@ const AIEngine = (() => {
       if (!legal(B, side).length) { err = `Dòng ${i + 1} (“${mv}”): ván cờ đã kết thúc trước nước này.`; break; }
       let m;
       try { m = resolve(B, side, mv); } catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}.`; break; }
-      plies.push({ line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0 });
+      plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0 });
       B = apply(B, m); side = opp(side);
     }
     let no = 1; plies.forEach((p, i) => { if (i && p.side === s0) no++; p.no = no; });
@@ -167,32 +169,39 @@ const AIEngine = (() => {
     if (!(await prepareEngine())) return;
     setBusy(true); out.innerHTML = '';
     const snapshot = fenIn.value + '\n' + scriptIn.value, T = Math.round(timeBudget() * 0.6);
-    let stopped = false;
-    for (let i = 0; i < plies.length; i++) {
-      const p = plies[i], board = toCodes(p.B), side = sideNum(p.side);
-      say(`Đang chấm nước ${i + 1}/${plies.length}: ${p.nota}…`);
-      try {
-        const r = await AIEngine.analyze({ board, side, time: T });
-        const best = r.lines[0];
-        p.bestMove = best.move; p.best = best.score; p.bestPv = best.pv; p.depth = r.depth;
-        if (same(best.move, p.m)) p.played = best.score;
-        else {
-          const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m] });
-          p.played = rp.lines.length ? rp.lines[0].score : best.score;
-        }
-        const after = apply(p.B, p.m);
-        p.mates = !legal(after, opp(p.side)).length;
-        p.cls = classify(p);
-      } catch (e) {
-        if (e.message === 'stopped') { stopped = true; break; }
-        setBusy(false); say(`Lỗi khi tính: ${e.message || e}`, true); return;
+    let stopped = false, failed = null, next = 0, count = 0;
+    const lanes = AIEngine.lanes();
+    async function grade(p) {
+      const board = toCodes(p.B), side = sideNum(p.side);
+      const r = await AIEngine.analyze({ board, side, time: T, split: false });
+      const best = r.lines[0];
+      p.bestMove = best.move; p.best = best.score; p.bestPv = best.pv; p.depth = r.depth;
+      if (same(best.move, p.m)) p.played = best.score;
+      else {
+        const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false });
+        p.played = rp.lines.length ? rp.lines[0].score : best.score;
+      }
+      const after = apply(p.B, p.m);
+      p.mates = !legal(after, opp(p.side)).length;
+      p.cls = classify(p);
+    }
+    // Mỗi "làn" lần lượt lấy nước chưa chấm; nhiều bản Pikafish thì nhiều làn chạy cùng lúc.
+    async function lane() {
+      while (!stopped && !failed && next < plies.length) {
+        const p = plies[next++];
+        try { await grade(p); count++; say(`Đang chấm: xong ${count}/${plies.length} nước${lanes > 1 ? `, ${lanes} nước cùng lúc` : ''}…`); }
+        catch (e) { if (e.message === 'stopped') stopped = true; else failed = e; }
       }
     }
+    say(`Đang chấm ${plies.length} nước${lanes > 1 ? `, ${lanes} nước cùng lúc` : ''}…`);
+    await Promise.all(Array.from({ length: lanes }, lane));
+    if (failed) { setBusy(false); say(`Lỗi khi tính: ${failed.message || failed}`, true); return; }
     setBusy(false);
     const done = plies.filter(p => p.cls);
     lastReview = { snapshot, plies: done };
     renderReview(done, s0);
     const bad = done.filter(p => ['inacc', 'mistake', 'blunder'].includes(p.cls.key)).length;
+    if (stopped && !done.length) { say('Đã dừng, chưa chấm xong nước nào.'); return; }
     say((stopped ? `Đã dừng sau ${done.length}/${plies.length} nước. ` : `Đã chấm xong ${done.length} nước. `) +
       (bad ? `Có ${bad} nước đáng xem lại; bấm vào từng dòng để xem trên bàn cờ.` : 'Không có nước nào đáng ngại.') +
       (err ? ` Lưu ý: ${err}` : ''), !!err);
@@ -220,7 +229,7 @@ const AIEngine = (() => {
       const p = plies[+btn.dataset.i];
       const hints = [{ m: p.m, color: same(p.m, p.bestMove) ? ARROW[0] : '#f59e0b', w: 16 }];
       if (!same(p.m, p.bestMove)) hints.unshift({ m: p.bestMove, color: ARROW[0], w: 12 });
-      const ply = +btn.dataset.i; // số nước đã đi trước nước này
+      const ply = p.idx; // số nước đã đi trước nước này
       const note = `Trước nước ${p.no}${p.side === s0 ? '' : '…'} (${sideName(p.side)} đi). Kịch bản: ${p.nota} (mũi tên cam nếu khác máy)` +
         (same(p.m, p.bestMove) ? ', trùng nước máy chọn.' : `; máy chọn ${nota(p.B, p.side, p.bestMove)} (mũi tên xanh): ${pvText(p.B, p.side, p.bestPv, 6)}.`) + ' Bấm vào bàn cờ để quay lại.';
       Editor.view(ply, hints, note);
@@ -240,7 +249,23 @@ const AIEngine = (() => {
   }
 
   // ---------- chọn máy: có sẵn hoặc Pikafish ----------
-  const engineSel = $('aiEngine'), pfBox = $('pfBox'), pfMsg = $('pfMsg'), pfNeedNet = $('pfNeedNet');
+  const engineSel = $('aiEngine'), pfBox = $('pfBox'), pfMsg = $('pfMsg'), pfNeedNet = $('pfNeedNet'), pfThreads = $('pfThreads');
+  for (let n = 1; n <= PikafishEngine.MAX; n++) {
+    const o = document.createElement('option'); o.value = n;
+    o.textContent = n === 1 ? '1 luồng (đơn luồng)' : `${n} luồng${n === PikafishEngine.RECOMMENDED ? ' (khuyên dùng)' : ''}`;
+    pfThreads.appendChild(o);
+  }
+  try { const t = +localStorage.getItem('pfThreads'); if (t) PikafishEngine.setThreads(t); } catch (e) { /* bỏ qua */ }
+  pfThreads.value = PikafishEngine.threads();
+  $('pfThreadNote').textContent = PikafishEngine.canShared
+    ? 'Trang đang chạy qua máy chủ có COOP/COEP: các luồng dùng chung bộ nhớ, như Pikafish trên máy tính.'
+    : 'Trang mở trực tiếp từ file nên trình duyệt không cho các luồng dùng chung bộ nhớ. Nhiều luồng ở đây là nhiều bản Pikafish chạy song song (mỗi bản cần thêm khoảng 450 MB bộ nhớ): kiểm duyệt chấm nhiều nước cùng lúc, gợi ý chia các nước đi cho các bản. Mở bằng tools/serve.py để có đa luồng chung bộ nhớ, mạnh hơn.';
+  pfThreads.onchange = () => {
+    try { localStorage.setItem('pfThreads', pfThreads.value); } catch (e) { /* bỏ qua */ }
+    if (busy) AIEngine.stop();
+    PikafishEngine.setThreads(pfThreads.value);
+    say(''); prepareEngine();
+  };
   $('pfDownload').href = PikafishEngine.NNUE_URL;
   try { if (localStorage.getItem('aiEngine') === 'pikafish') engineSel.value = 'pikafish'; } catch (e) { /* bỏ qua */ }
   function pfSay(msg, isErr) { pfMsg.textContent = msg; pfMsg.classList.toggle('err', !!isErr); }
@@ -249,13 +274,14 @@ const AIEngine = (() => {
     const pf = engineSel.value === 'pikafish';
     pfBox.hidden = !pf; AIEngine.setKind('builtin');
     if (!pf) return true;
-    pfNeedNet.hidden = true; pfSay('Đang khởi động Pikafish…');
+    pfNeedNet.hidden = true; pfSay(`Đang khởi động Pikafish (${PikafishEngine.threads()} luồng)…`);
     try {
       await PikafishEngine.start();
       AIEngine.setKind('pikafish');
-      const n = (PikafishEngine.info() || {}).threads || 1;
-      pfSay(n > 1 ? `Pikafish sẵn sàng, chạy ${n} luồng song song. Máy chạy ngay trên trình duyệt, không cần mạng.`
-        : 'Pikafish sẵn sàng (đơn luồng). Máy chạy ngay trên trình duyệt, không cần mạng. Muốn nhanh hơn nhiều lần: mở trang bằng tools/serve.py để chạy đa luồng.');
+      const m = PikafishEngine.info() || { threads: 1 };
+      pfSay(m.threads === 1 ? 'Pikafish sẵn sàng, chạy 1 luồng.'
+        : m.shared ? `Pikafish sẵn sàng, chạy ${m.threads} luồng dùng chung bộ nhớ.`
+          : `Pikafish sẵn sàng, chạy ${m.threads} bản song song.`);
       return true;
     } catch (e) {
       if (e.code === 'NO_NET') {

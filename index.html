@@ -84,7 +84,12 @@
           </div>
           <p class="hint">Máy tự tính ngay trên trình duyệt, không cần mạng. Gợi ý dành cho thế cờ ở cuối kịch bản; kiểm duyệt chấm lần lượt từng nước trong kịch bản.</p>
           <div class="pf-box" id="pfBox" hidden>
-            <p class="hint" id="pfMsg" role="status"></p>
+            <div class="pf-row">
+              <label for="pfThreads">Số luồng</label>
+              <select id="pfThreads" class="fmt"></select>
+            </div>
+            <p class="hint" id="pfThreadNote"></p>
+            <p class="hint pf-msg" id="pfMsg" role="status"></p>
             <div class="actions" id="pfNeedNet" hidden>
               <a class="btn sm" id="pfDownload" href="#" target="_blank" rel="noopener">1. Tải pikafish.nnue</a>
               <label class="btn sm" for="pfFile">2. Chọn file đã tải</label><input type="file" id="pfFile" accept=".nnue" hidden>
