@@ -78,16 +78,17 @@
     return `<g transform="translate(${x},${y})" ${extra}><circle r="45" fill="#000" opacity=".25" cx="3" cy="5"/><circle r="44" fill="url(#edPc)" stroke="${col}" stroke-width="3"/><circle r="35" fill="none" stroke="${col}" stroke-width="2" opacity=".8"/><text font-size="46" font-weight="900" font-family='${CJK}' fill="${col}" text-anchor="middle" dominant-baseline="central" y="2">${CH[p.side][p.type]}</text></g>`;
   }
   function render() {
-    let B, s, targets = [], last = null, status = '', check = -1, over = false;
+    let B, s, targets = [], last = null, status = '', check = -1, over = false, valid = false;
     if (mode === 'setup') {
       B = setupB; s = setupSide;
       status = fenError ? `FEN đang lỗi: ${fenError}` : setupWarnings();
+      valid = !fenError && status.startsWith('Thế cờ hợp lệ');
       if (!fenError) { try { const r = replay(); if (r.err) status += ` Lưu ý: kịch bản không khớp với thế cờ này. ${r.err}.`; } catch (e) { /* FEN lỗi đã báo ở trên */ } }
     } else {
       let r;
       try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
       if (r) {
-        B = r.b; s = r.s; last = r.last;
+        B = r.b; s = r.s; last = r.last; valid = true;
         const moves = legal(B, s);
         if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
@@ -120,6 +121,8 @@
     $('edUndoReset').hidden = !resetUndo;
     $('edSetupTools').hidden = mode !== 'setup'; $('edRecordTools').hidden = mode !== 'record';
     $('edSide').value = setupSide;
+    // Báo thế cờ đang hiển thị cho thanh đánh giá (js/app/ai-panel.js); bỏ qua khi đang kéo quân.
+    if (window.onEditorPosition && !(drag && drag.moved)) window.onEditorPosition({ B, s, valid });
     tray.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === (tool ? tool.side + tool.type : tool === null ? 'move' : 'erase'))));
   }
   function arrowSvg(f, t, color, w) {

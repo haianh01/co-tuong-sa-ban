@@ -55,6 +55,8 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
 - **Gợi ý nước đi**: tính 3 nước tốt nhất cho thế cờ ở cuối kịch bản, vẽ mũi tên trên bàn cờ kèm diễn biến dự đoán. Bấm “Đi nước này” để thêm vào kịch bản.
 - **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
+- **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
+- **Biểu đồ diễn biến**: sau khi kiểm duyệt, biểu đồ cho thấy thế cờ nghiêng về bên nào qua từng nước; chấm màu là nước đáng xem lại. Rê chuột để xem điểm, bấm để xem thế cờ trên bàn.
 - **Nhập / xuất PGN**: dán hoặc mở file `.pgn`; mọi nước được kiểm tra đúng luật trước khi thành kịch bản. Xuất kịch bản ra PGN dạng tọa độ ICCS.
 
 Độ mạnh chỉnh bằng ô “Nhanh / Vừa / Kỹ” (thời gian suy nghĩ mỗi thế cờ).
@@ -69,17 +71,17 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
   Nếu chạy trang qua máy chủ web, có thể đặt sẵn file tại `engine/pikafish.nnue`, trang sẽ tự nạp.
 
-Pikafish có hai bản, trang tự chọn:
+Chọn **số luồng** ngay trong khung Trợ lý AI (hiện ra khi chọn Pikafish). Cách chạy nhiều luồng tùy cách mở trang:
 
-| Cách mở trang | Bản Pikafish | Tốc độ |
-|---|---|---|
-| `python3 tools/serve.py` rồi vào http://localhost:8000 | Đa luồng (số nhân CPU trừ 1, tối đa 16) | Nhanh gấp khoảng (số luồng) lần |
-| Nhấp đúp `index.html`, hoặc file gộp trong `dist/` | Đơn luồng | Vẫn vượt xa kỳ thủ người |
+| Cách mở trang | Nhiều luồng chạy thế nào | Gợi ý nước đi | Kiểm duyệt kịch bản |
+|---|---|---|---|
+| `python3 tools/serve.py` rồi vào http://localhost:8000 | **Chung bộ nhớ**: một bản Pikafish chạy N luồng (tối đa 16) | Nhanh gấp khoảng N lần | Tính sâu hơn |
+| Nhấp đúp `index.html`, hoặc file gộp trong `dist/` | **Nhiều bản song song**: N bản Pikafish độc lập (tối đa 4, mỗi bản khoảng 450 MB bộ nhớ) | Chia các nước đi cho N bản rồi gộp | Chấm N nước cùng lúc, nhanh gần gấp N lần |
 
-Đa luồng cần `SharedArrayBuffer`, mà trình duyệt chỉ bật khi trang được gửi kèm header
-`Cross-Origin-Opener-Policy: same-origin` và `Cross-Origin-Embedder-Policy`. Mở file trực tiếp thì không có header,
-nên trang dùng bản đơn luồng. Nếu đưa trang lên máy chủ web khác, hãy cấu hình hai header này
-(`tools/serve.py` dùng `credentialless` để font Google Fonts vẫn tải được).
+Đa luồng chung bộ nhớ cần `SharedArrayBuffer`, mà trình duyệt chỉ bật khi trang được gửi kèm header
+`Cross-Origin-Opener-Policy: same-origin` và `Cross-Origin-Embedder-Policy`. Mở file trực tiếp thì không có header
+(và không thể bật bằng code trong trang), nên trang dùng cách nhiều bản song song. Nếu đưa trang lên máy chủ web khác,
+hãy cấu hình hai header này (`tools/serve.py` dùng `credentialless` để font Google Fonts vẫn tải được).
 
 Để biên dịch lại (cần [Emscripten](https://emscripten.org/)):
 
