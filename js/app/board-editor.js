@@ -33,16 +33,16 @@
   // Replays the script over the FEN (at most `limit` moves) and returns the resulting position.
   function replay(limit = Infinity) {
     const { B, side } = parseFEN(fenIn.value);
-    let b = B, s = side, n = 0, err = '', last = null;
+    let b = B, s = side, n = 0, err = '', errLine = -1, last = null;
     const lines = scriptIn.value.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!isMoveLine(lines[i])) continue;
       if (n >= limit) break;
       const mv = lines[i].split('|')[0].trim();
       try { const m = resolve(b, s, mv); last = m; b = apply(b, m); s = opp(s); n++; }
-      catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}`; break; }
+      catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}`; errLine = i; break; }
     }
-    return { b, s, n, err, last };
+    return { b, s, n, err, errLine, last };
   }
   const iccs = m => { const f = i => String.fromCharCode(97 + i % 9) + (9 - ((i / 9) | 0)); return f(m[0]) + f(m[1]); };
   function readSetup() {
@@ -82,6 +82,7 @@
     if (mode === 'setup') {
       B = setupB; s = setupSide;
       status = fenError ? `FEN đang lỗi: ${fenError}` : setupWarnings();
+      if (!fenError) { try { const r = replay(); if (r.err) status += ` Lưu ý: kịch bản không khớp với thế cờ này. ${r.err}.`; } catch (e) { /* FEN lỗi đã báo ở trên */ } }
     } else {
       let r;
       try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
@@ -91,7 +92,7 @@
         if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
         over = moves.length === 0;
-        status = r.err ? `Kịch bản dừng ở lỗi. ${r.err}` :
+        status = r.err ? `Kịch bản dừng ở lỗi. ${r.err}. ${r.n ? '' : 'Có thể thế cờ đã được đổi mà kịch bản vẫn là của thế cờ cũ. '}Sửa dòng đó hoặc bấm “Xóa từ dòng lỗi trở xuống”.` :
           over ? `${s === 'r' ? 'Đỏ' : 'Đen'} hết nước đi: ván cờ kết thúc sau ${r.n} nước.` :
           `Lượt ${s === 'r' ? 'Đỏ' : 'Đen'} đi${check >= 0 ? ' (đang bị chiếu)' : ''}. Đã ghi ${r.n} nước.`;
         if (view) status = view.note || `Đang xem thế cờ sau ${r.n} nước. Bấm vào bàn cờ để quay lại.`;
@@ -114,6 +115,9 @@
     if (drag && drag.moved && B[drag.from]) h += pieceSvg(B[drag.from], drag.x, drag.y, 'style="filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))"');
     svg.innerHTML = h;
     statusEl.textContent = status;
+    let broken = false; if (!fenError) { try { broken = !!replay().err; } catch (e) { /* bỏ qua */ } }
+    $('edFix').hidden = !broken || !!view;
+    $('edUndoReset').hidden = !resetUndo;
     $('edSetupTools').hidden = mode !== 'setup'; $('edRecordTools').hidden = mode !== 'record';
     $('edSide').value = setupSide;
     tray.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === (tool ? tool.side + tool.type : tool === null ? 'move' : 'erase'))));
@@ -208,8 +212,24 @@
   $('edModeSetup').onclick = () => setMode('setup');
   $('edModeRecord').onclick = () => setMode('record');
   $('edSide').onchange = e => { setupSide = e.target.value; commitSetup(); };
-  $('edStart').onclick = () => { fenIn.value = START_FEN; fire(fenIn); };
-  $('edClear').onclick = () => { setupB = new Array(90).fill(null); setupB[4] = { id: 'bk', side: 'b', type: 'k' }; setupB[85] = { id: 'rk', side: 'r', type: 'k' }; sel = null; commitSetup(); };
+  // Xóa kịch bản từ dòng nước đi lỗi trở xuống (các dòng đó viết cho một thế cờ khác).
+  function cutAtError() {
+    const r = replay(); if (!r.err) return false;
+    scriptIn.value = scriptIn.value.split('\n').slice(0, r.errLine).join('\n').replace(/\s+$/, ''); fire(scriptIn);
+    return true;
+  }
+  // Đổi cả thế cờ (khai cuộc / bàn trống): kịch bản cũ không còn hợp nên được xóa, có nút hoàn tác.
+  let resetUndo = null;
+  function resetBoard(fen) {
+    const old = { fen: fenIn.value, script: scriptIn.value };
+    fenIn.value = fen; fire(fenIn);
+    let fits = true; try { fits = !replay().err; } catch (e) { fits = false; }
+    if (!fits) { scriptIn.value = ''; fire(scriptIn); resetUndo = old; render(); statusEl.textContent += ' Kịch bản cũ không hợp với thế cờ mới nên đã được xóa.'; }
+  }
+  $('edStart').onclick = () => resetBoard(START_FEN);
+  $('edClear').onclick = () => resetBoard('4k4/9/9/9/9/9/9/9/9/4K4 ' + (setupSide === 'r' ? 'w' : 'b'));
+  $('edFix').onclick = () => { cutAtError(); };
+  $('edUndoReset').onclick = () => { if (!resetUndo) return; const u = resetUndo; resetUndo = null; fenIn.value = u.fen; fire(fenIn); scriptIn.value = u.script; fire(scriptIn); render(); };
   $('edUndo').onclick = () => {
     const lines = scriptIn.value.split('\n'); for (let i = lines.length - 1; i >= 0; i--) if (isMoveLine(lines[i])) { lines.splice(i, 1); break; }
     scriptIn.value = lines.join('\n').replace(/\s+$/, ''); fire(scriptIn);
@@ -218,13 +238,14 @@
   $('edNarr').onclick = () => { const s = scriptIn.value.replace(/\s+$/, ''); scriptIn.value = (s ? s + '\n' : '') + '| '; fire(scriptIn); scriptIn.focus(); scriptIn.setSelectionRange(scriptIn.value.length, scriptIn.value.length); };
 
   // keep in sync with typing in the fields and with preset changes
-  fenIn.addEventListener('input', () => { hints = []; view = null; readSetup(); render(); });
-  scriptIn.addEventListener('input', () => { hints = []; view = null; if (mode === 'record') render(); });
+  fenIn.addEventListener('input', () => { hints = []; view = null; resetUndo = null; readSetup(); render(); });
+  scriptIn.addEventListener('input', () => { hints = []; view = null; resetUndo = null; render(); });
   window.refreshEditor = () => { sel = null; hints = []; view = null; readSetup(); render(); };
   // Cầu nối cho Trợ lý AI (js/app/ai-panel.js).
   window.Editor = {
     setMode: m => { if (mode !== m) setMode(m); },
     position: () => replay(),
+    cutAtError,
     showHints: list => { view = null; hints = list || []; render(); },
     view: (ply, list, note) => { if (mode !== 'record') setMode('record'); view = { ply, hints: list || [], note }; render(); svg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
     play: m => { if (mode !== 'record') setMode('record'); view = null; const cur = current(); if (!cur || cur.err) return false; return recordMove(m[0], m[1]); }
