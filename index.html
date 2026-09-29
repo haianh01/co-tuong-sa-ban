@@ -117,6 +117,23 @@
         <div class="field">
           <label for="preset">Mẫu có sẵn</label>
           <select id="preset"></select>
+          <div class="actions my-presets">
+            <button class="btn sm" id="mySave" type="button">Lưu thành mẫu</button>
+            <button class="btn sm" id="myDelete" type="button" hidden>Xóa mẫu này</button>
+            <button class="btn sm" id="myExport" type="button">Tải danh sách mẫu</button>
+            <label class="btn sm" for="myImport">Mở danh sách mẫu</label><input type="file" id="myImport" accept=".json,application/json" hidden>
+          </div>
+          <div class="my-save" id="mySaveForm" hidden>
+            <label for="myName">Tên mẫu</label>
+            <div class="actions">
+              <input type="text" id="myName" maxlength="80">
+              <button class="btn sm primary" id="myConfirm" type="button">Lưu</button>
+              <button class="btn sm" id="myCancel" type="button">Hủy</button>
+            </div>
+            <p class="hint">Lưu tiêu đề, thế cờ và kịch bản đang có vào nhóm “Mẫu của tôi”. Trùng tên thì mẫu cũ được cập nhật.</p>
+          </div>
+          <p class="ok" id="myInfo" role="status"></p>
+          <p class="hint">Mẫu của bạn lưu trong trình duyệt này. Muốn dùng ở máy khác: bấm “Tải danh sách mẫu”, rồi “Mở danh sách mẫu” ở máy kia.</p>
         </div>
         <div class="field">
           <label for="title">Tiêu đề video</label>
@@ -153,6 +170,7 @@
             <label class="btn" for="pgnFile">Mở file .pgn</label><input type="file" id="pgnFile" accept=".pgn,.txt,text/plain" hidden>
             <button class="btn" id="pgnExport" type="button">Xuất từ kịch bản</button>
             <button class="btn" id="pgnDownload" type="button">Tải file .pgn</button>
+            <button class="btn primary" id="pgnSave" type="button" hidden>Lưu vào mẫu có sẵn</button>
           </div>
           <p class="ok" id="pgnInfo" role="status"></p>
         </details>
@@ -183,6 +201,7 @@
 <script src="js/app/export.js"></script>
 <script src="js/app/presets.js"></script>
 <script src="js/app/studio.js"></script>
+<script src="js/app/my-presets.js"></script>
 <script src="js/app/board-editor.js"></script>
 <script src="js/app/pikafish.js"></script>
 <script src="js/app/ai-panel.js"></script>
