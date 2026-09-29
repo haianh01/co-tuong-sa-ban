@@ -66,6 +66,22 @@
             <button class="btn" id="edClearMoves" type="button">Xóa các nước đi</button>
           </div>
         </div>
+        <div class="ai-box" role="region" aria-labelledby="aiTitle">
+          <div class="ai-head">
+            <h3 id="aiTitle">Trợ lý AI</h3>
+            <select id="aiLevel" class="fmt" aria-label="Thời gian máy suy nghĩ">
+              <option value="600">Nhanh</option><option value="1500" selected>Vừa</option><option value="4000">Kỹ</option>
+            </select>
+          </div>
+          <p class="hint">Máy tự tính ngay trên trình duyệt, không cần mạng. Gợi ý dành cho thế cờ ở cuối kịch bản; kiểm duyệt chấm lần lượt từng nước trong kịch bản.</p>
+          <div class="actions">
+            <button class="btn" id="aiHint" type="button">Gợi ý nước đi</button>
+            <button class="btn" id="aiReview" type="button">Kiểm duyệt kịch bản</button>
+            <button class="btn" id="aiStop" type="button" hidden>Dừng</button>
+          </div>
+          <p class="ai-status" id="aiStatus" role="status" aria-live="polite"></p>
+          <div id="aiOut"></div>
+        </div>
       </div>
     </div>
     <div class="grid">
@@ -100,6 +116,18 @@
           <textarea id="script" class="code" rows="12" spellcheck="false"></textarea>
           <p class="hint">Cú pháp: <code>nước đi | lời thoại</code>. Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu <code>.</code> tiến, <code>/</code> thoái, <code>-</code> bình. Hai quân cùng cột: <code>Xt.3</code> (trước), <code>Xs.3</code> (sau). Cũng nhận tọa độ kiểu <code>h2e2</code>. Dòng bắt đầu bằng <code>|</code> chỉ có lời thoại, camera giữ cảnh. Dòng bắt đầu bằng <code>//</code> bị bỏ qua.</p>
         </div>
+        <details class="field pgn">
+          <summary>Nhập / xuất PGN</summary>
+          <textarea id="pgnText" class="code" rows="6" spellcheck="false" aria-label="Nội dung PGN" placeholder="Dán PGN vào đây, ví dụ: 1. h2e2 h9g7 2. h0g2 i9h9"></textarea>
+          <p class="hint">Nhận ký hiệu tọa độ (<code>h2e2</code>), Việt (<code>P2-5</code>), WXF (<code>C2.5</code>) và Trung Quốc (<code>炮二平五</code>). Thẻ <code>[FEN "…"]</code> thành thế cờ, lời bình <code>{…}</code> thành lời thoại, nhánh biến <code>(…)</code> bị bỏ qua. Mọi nước đều được kiểm tra đúng luật khi nhập.</p>
+          <div class="actions">
+            <button class="btn" id="pgnImport" type="button">Nhập vào kịch bản</button>
+            <label class="btn" for="pgnFile">Mở file .pgn</label><input type="file" id="pgnFile" accept=".pgn,.txt,text/plain" hidden>
+            <button class="btn" id="pgnExport" type="button">Xuất từ kịch bản</button>
+            <button class="btn" id="pgnDownload" type="button">Tải file .pgn</button>
+          </div>
+          <p class="ok" id="pgnInfo" role="status"></p>
+        </details>
         <div class="actions">
           <button class="btn primary" id="buildBtn">Dựng video</button>
           <span class="ok" id="buildInfo"></span>
@@ -112,6 +140,8 @@
 
 <script src="js/core/utils.js"></script>
 <script src="js/core/engine.js"></script>
+<script src="js/core/ai-core.js"></script>
+<script src="js/core/pgn.js"></script>
 <script src="js/core/timeline.js"></script>
 <script src="js/render/camera.js"></script>
 <script src="js/render/environment.js"></script>
@@ -126,5 +156,6 @@
 <script src="js/app/presets.js"></script>
 <script src="js/app/studio.js"></script>
 <script src="js/app/board-editor.js"></script>
+<script src="js/app/ai-panel.js"></script>
 </body>
 </html>
