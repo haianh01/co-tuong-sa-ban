@@ -15,7 +15,7 @@ function doBuild(autoplay) {
 }
 presetSel.onchange = () => { if (presetSel.value !== 'custom') { loadPreset(+presetSel.value); doBuild(false); } };
 for (const el of [titleIn, fenIn, scriptIn]) el.addEventListener('input', () => { presetSel.value = 'custom'; });
-$('startPos').onclick = () => { fenIn.value = START_FEN; fenIn.dispatchEvent(new Event('input')); };
+$('startPos').onclick = () => $('edStart').click();
 const soundSel = $('sound');
 Object.entries(SOUND_PACKS).forEach(([k, p]) => { const o = document.createElement('option'); o.value = k; o.textContent = p.name; soundSel.appendChild(o); });
 soundSel.onchange = () => { SOUND_PACK = soundSel.value; previewPack(); };

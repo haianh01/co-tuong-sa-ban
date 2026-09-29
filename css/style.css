@@ -64,6 +64,8 @@ textarea.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-s
 .tray button.pc.r{color:#a8231b}.tray button.pc.b{color:#1f1a16}
 .tray button[aria-pressed="true"]{outline:3px solid var(--brass);outline-offset:1px}
 [hidden]{display:none !important}
+.ed-fix{margin-top:-8px}
+.ed-fix:not(:has(button:not([hidden]))){display:none}
 .ai-box{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ai-head h3{margin:0;font-size:16px}

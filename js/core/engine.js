@@ -93,6 +93,13 @@ function resolve(B, side, raw) {
     if (fsel === 't' || fsel === 's') return frontTag(B, side, x) === fsel;
     return d.file === +fsel;
   });
-  if (!cands.length) throw `${side === 'r' ? 'Đỏ' : 'Đen'} không có nước đi hợp lệ nào khớp`;
+  if (!cands.length) {
+    // Nói rõ lý do: không có quân đó, quân không ở cột đó, hay quân có nhưng không đi được.
+    const name = `${NAME[type]} ${side === 'r' ? 'Đỏ' : 'Đen'}`, files = [];
+    B.forEach((q, i) => { if (q && q.side === side && q.type === type && !files.includes(fileOf(side, i % 9))) files.push(fileOf(side, i % 9)); });
+    if (!files.length) throw `trên bàn không còn ${name} nào`;
+    if (/\d/.test(fsel) && !files.includes(+fsel)) throw `không có ${name} ở cột ${fsel} (${name} đang ở cột ${files.sort((a, b) => a - b).join(', ')})`;
+    throw `${name} ở cột ${fsel} không đi được “${m[3]}${num}” (sai luật, bị quân khác cản, hoặc để Tướng bị chiếu)`;
+  }
   return cands[0];
 }

@@ -95,8 +95,13 @@ const AIEngine = (() => {
     if (busy) return;
     let pos;
     try { pos = Editor.position(); } catch (e) { say(`Thế cờ chưa hợp lệ: ${e}`, true); return; }
-    if (pos.err) { say(`Kịch bản đang lỗi, hãy sửa trước. ${pos.err}`, true); return; }
     Editor.setMode('record');
+    if (pos.err) {
+      say(`Máy chưa gợi ý được vì kịch bản có nước đi không hợp lệ. ${pos.err}.`, true);
+      out.innerHTML = `<div class="actions"><button class="btn sm" type="button" id="aiCut">Xóa từ dòng lỗi trở xuống rồi gợi ý</button></div>`;
+      $('aiCut').onclick = () => { Editor.cutAtError(); suggest(); };
+      return;
+    }
     const { b: B, s: side } = pos;
     if (!legal(B, side).length) { say(`${sideName(side)} đã hết nước đi: ván cờ kết thúc.`); out.innerHTML = ''; return; }
     setBusy(true); out.innerHTML = '';
