@@ -8,27 +8,13 @@
   const NS = 'http://www.w3.org/2000/svg';
   const svg = $('edBoard'), statusEl = $('edStatus'), tray = $('edTray');
   const X = c => 80 + c * 100, Y = r => 90 + r * 100;
-  const FEN_LETTER = { k: 'k', a: 'a', e: 'b', h: 'n', r: 'r', c: 'c', p: 'p' };
   let mode = 'setup', setupB = new Array(90).fill(null), setupSide = 'r', tool = null, sel = null, drag = null, fenError = '';
   // Mũi tên gợi ý của Trợ lý AI; view = đang xem lại thế cờ trước một nước nào đó của kịch bản.
   let hints = [], view = null;
 
   // ---------- helpers ----------
   const fire = el => el.dispatchEvent(new Event('input', { bubbles: true }));
-  function fenOf(B, side) {
-    const rows = [];
-    for (let r = 0; r < 10; r++) {
-      let row = '', gap = 0;
-      for (let c = 0; c < 9; c++) {
-        const p = B[r * 9 + c];
-        if (!p) { gap++; continue; }
-        if (gap) { row += gap; gap = 0; }
-        const l = FEN_LETTER[p.type]; row += p.side === 'r' ? l.toUpperCase() : l;
-      }
-      if (gap) row += gap; rows.push(row);
-    }
-    return rows.join('/') + (side === 'r' ? ' w' : ' b');
-  }
+  const fenOf = toFEN;
   const isMoveLine = l => { const s = l.trim(); return s && !s.startsWith('|') && !s.startsWith('//'); };
   // Replays the script over the FEN (at most `limit` moves) and returns the resulting position.
   function replay(limit = Infinity) {

@@ -24,7 +24,7 @@ js/core/
   ai-core.js            Máy tính cờ: tìm kiếm alpha-beta, lượng giá thế cờ (chạy trong Web Worker)
   pgn.js                Đọc / ghi PGN (ICCS, ký hiệu Việt, WXF, ký hiệu Trung Quốc)
   move-facts.js         Dữ kiện "vì sao" của một nước: đòn trừng phạt, quân treo, so sánh vị trí
-  mate-net.js           Lưới chiếu bí: quân chiếu, ô Tướng định chạy bị ai khống chế, quân tưởng đỡ được
+  mate-net.js           Thế chiếu bí: quân chiếu, ô Tướng định chạy bị quân nào khống chế hay quân nhà chặn
   timeline.js           Biến kịch bản thành dòng thời gian: camera, hiệu ứng, âm thanh
 js/render/
   camera.js             Canvas, phép chiếu 3D, chuyển động camera
@@ -32,7 +32,7 @@ js/render/
   board.js              Bàn cờ gỗ trắc
   pieces.js             Quân cờ (3 chất liệu), rung quân, chén trà
   overlays.js           Vệt đường đi, vòng chân Mã, nhãn, hạt bụi va chạm
-  scene.js              Ghép cảnh, lưới chiếu bí, phụ đề, thẻ tiêu đề
+  scene.js              Ghép cảnh, hiệu ứng chiếu bí, phụ đề, thẻ tiêu đề
 js/audio/
   audio-engine.js       Bộ tổng hợp âm thanh, reverb, bus ghi âm
   sound-packs.js        Các bộ âm thanh (thêm bộ mới ở đây)
@@ -56,13 +56,13 @@ tools/pikafish/         Vá và biên dịch Pikafish sang WebAssembly
 
 ## Hiệu ứng chiếu bí
 
-Khi một nước trong kịch bản chiếu bí, video tự giải thích vì sao Tướng hết đường (máy tính theo đúng luật, gồm cả Pháo có ngòi mới và hai Tướng lộ mặt):
+Khi một nước trong kịch bản chiếu bí, video làm sáng các quân tạo nên thế bí, lần lượt từng quân, không vẽ mũi tên hay dấu X (lý do để bạn giải thích trong lời thoại). Máy tính đúng luật, gồm cả Pháo có ngòi mới và hai Tướng lộ mặt:
 
-1. Quân vừa đi có vầng sáng xanh; các quân không liên quan tối đi.
-2. Tia đỏ chạy từ quân chiếu tới Tướng (Pháo đi xuyên ngòi, Mã đi qua chân Mã); ô Tướng đỏ lên.
-3. Bóng Tướng thử lần lượt từng ô chạy trong cung: ô bị khống chế có tia cam từ quân khống chế và bị gạch X; ô có quân nhà đứng chuyển màu xám.
-4. Tối đa hai quân tưởng đỡ được (ăn quân chiếu, chặn giữa đường, dời ngòi Pháo) thử đi và bị gạch X. Lý do để bạn tự giải thích trong lời thoại.
-5. Chữ 將死 (chiếu bí) hiện nhỏ trên sông, chỗ không có quân; hết nước đi thì là 困斃.
+- Quân vừa đi: vầng sáng xanh. Ô Tướng bị bí: đỏ.
+- Quân chiếu: sáng đỏ; ngòi Pháo: sáng cam.
+- Quân khống chế các ô Tướng định chạy: sáng cam (chọn ít quân nhất mà vẫn phủ hết các ô).
+- Quân nhà đứng chặn đường Tướng: sáng xám.
+- Các quân khác tối đi. Cuối cùng chữ 將死 (chiếu bí) hiện nhỏ trên sông, chỗ không có quân; hết nước đi thì là 困斃.
 
 ## Trợ lý AI
 
@@ -72,9 +72,10 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 - **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
 - **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
 - **Biểu đồ diễn biến**: sau khi kiểm duyệt, biểu đồ cho thấy thế cờ nghiêng về bên nào qua từng nước; chấm màu là nước đáng xem lại. Rê chuột để xem điểm, bấm để xem thế cờ trên bàn.
-- **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Có hai cách dùng:
+- **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (thế cờ FEN trước nước, điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu; nước đáng xem lại có thêm 3 phương án tốt nhất của máy để so sánh) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Có hai cách dùng:
   - **Gói Claude (sao chép – dán)**, mặc định: dùng gói tháng Claude (Pro, Max…) qua claude.ai, không cần khóa API, không tốn thêm phí. Bấm “Sao chép yêu cầu”, mở claude.ai, dán vào ô chat và gửi; khi Claude trả lời xong, sao chép câu trả lời, dán vào ô trong trang rồi bấm “Đọc kết quả”. Trang tự bỏ phần chữ thừa và khung ``` quanh khối JSON, bỏ các dòng không khớp nước nào, và báo nếu câu trả lời bị cụt.
   - **Khóa API**: gọi thẳng Claude từ trang. Cần khóa API Anthropic (tạo ở console.anthropic.com, tính phí theo lượng chữ, tách riêng với gói tháng); khóa chỉ gửi tới api.anthropic.com và chỉ được lưu trong trình duyệt khi bạn chọn “Nhớ khóa”.
+- **Nhờ Claude phân tích thế cờ**: trong kết quả “Gợi ý nước đi”, bấm “Nhờ Claude phân tích thế cờ này”. Claude nhận sơ đồ bàn cờ, FEN và 3 phương án máy vừa tính (điểm, diễn biến, nước đáp của đối phương, quân treo, so sánh với nước máy chọn), rồi viết phân tích: nhận định chung, ý đồ từng phương án, vì sao máy chọn nước đầu. Dùng được cả hai cách (gói Claude hoặc khóa API); với gói Claude thì đọc phân tích ngay trên claude.ai.
 - **Lý do cụ thể cho nước sai**: khi kiểm duyệt, trang tự đo dữ kiện "vì sao" cho từng nước, rồi dùng cho nút “Chèn nhận xét của máy” (không cần mạng) và gửi kèm cho Claude:
   - *Đòn trừng phạt*: đối phương đáp thế nào sau nước đó, ăn quân gì, cán cân vật chất ra sao.
   - *Quân bị treo*: quân vừa bị tấn công mà không có quân bảo vệ.

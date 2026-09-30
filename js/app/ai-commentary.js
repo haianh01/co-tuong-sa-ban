@@ -42,6 +42,9 @@ Quy tắc:
   2. "so_sanh_vi_tri_voi_nuoc_may_chon": số đo vị trí mà nước đã đi kém hơn nước máy chọn (quân kiểm soát ít ô hơn, Mã bị cản chân, Xe bị quân mình chặn, quân chậm ra trận…). Dùng khi không mất quân: diễn giải thành nguyên tắc chơi cờ, nói kiểu "thường thì…", không tuyệt đối hóa.
   3. Nếu không có dữ kiện nào rõ ràng, chỉ nói máy đánh giá nước khác tốt hơn, không tự nghĩ ra lý do.
 - "dien_bien_sau_nuoc_da_di" là các nước máy dự đoán sẽ xảy ra sau nước đã đi; "de_doa_moi" là quân đối phương mà nước đi mới đe dọa ăn được.
+- "fen_truoc_nuoc" là thế cờ ngay trước nước đó: khi cần biết quân nào đứng ở đâu thì đọc từ đây, không tự hình dung.
+- "cac_phuong_an_cua_may" (chỉ có ở nước đáng xem lại) là 3 phương án tốt nhất máy tìm được kèm điểm và diễn biến; dùng để so sánh khi nói vì sao nước đã đi kém hơn.
+- Chỉ giải thích ý đồ của 2 đến 3 nước đầu trong một diễn biến; các nước xa hơn là máy đi tiếp cho hết, không suy diễn mục đích của chúng.
 - Không nhắc số đo khô khan (ví dụ "kiểm soát 2 ô") trừ khi giúp người nghe hiểu; nói thành ý nghĩa ("Mã ra biên nên ít đường đi").
 - Nước tốt nhất hoặc nước tốt: nói ngắn ý đồ của nước đó; không cần khen mọi nước.
 - Nếu có lời thoại người dùng đã viết cho nước đó, giữ ý và phong cách của họ, chỉ làm rõ và tự nhiên hơn.
@@ -59,7 +62,7 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
     additionalProperties: false
   };
   const fmtScore = red => (Math.abs(red) > 29500 ? `${red > 0 ? 'Đỏ' : 'Đen'} chiếu bí sau ${Math.ceil((30000 - Math.abs(red)) / 2)} nước`
-    : (red > 0 ? '+' : red < 0 ? '−' : '') + (Math.abs(red) / 100).toFixed(1).replace('.', ','));
+    : ((v => (v > 0 ? '+' : v < 0 ? '−' : '') + (Math.abs(v) / 10).toFixed(1).replace('.', ','))(Math.round(red / 10))));
   const sideName = s => (s === 'r' ? 'Đỏ' : 'Đen');
   const notaOf = (B, side, m) => { try { const n = toNotation(B, side, m); const b = resolve(B, side, n); return b[0] === m[0] && b[1] === m[1] ? n : pgnICCS(m); } catch (e) { return pgnICCS(m); } };
   function pvNotas(B, side, pv, max) {
@@ -67,22 +70,36 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
     try { for (const m of (pv || []).slice(0, max)) { o.push(notaOf(b, s, m)); b = apply(b, m); s = opp(s); } } catch (e) { /* dừng ở nước lạ */ }
     return o;
   }
+  const toRed = (sc, side) => (side === 'r' ? sc : -sc);
+  // Sơ đồ bàn cờ dạng chữ để Claude đọc vị trí quân chính xác: hàng trên là phía Đen, chữ hoa là quân Đỏ.
+  function boardText(B) {
+    const L = { k: 'Tg', a: 'S', e: 'T', h: 'M', r: 'X', c: 'P', p: 'B' }, cols = f => f.map(n => String(n).padStart(3)).join('');
+    const rows = [];
+    for (let r = 0; r < 10; r++) {
+      let row = '';
+      for (let c = 0; c < 9; c++) { const q = B[r * 9 + c]; row += (q ? (q.side === 'r' ? L[q.type].toUpperCase() : L[q.type].toLowerCase()) : '.').padStart(3); }
+      rows.push('     ' + row);
+      if (r === 4) rows.push('     ' + '~'.repeat(27) + '  (sông)');
+    }
+    return ['Đen: ' + cols([1, 2, 3, 4, 5, 6, 7, 8, 9]), ...rows, 'Đỏ:  ' + cols([9, 8, 7, 6, 5, 4, 3, 2, 1])].join('\n');
+  }
   function narrationOf(line) { const i = line.indexOf('|'); return i < 0 ? '' : line.slice(i + 1).trim(); }
 
   function buildFacts() {
     const lines = scriptIn.value.split('\n'), s0 = data.s0;
     return data.plies.slice().sort((a, b) => a.idx - b.idx).map(p => {
-      const after = apply(p.B, p.m), cap = p.B[p.m[1]], toRed = (sc, side) => (side === 'r' ? sc : -sc);
+      const after = apply(p.B, p.m), cap = p.B[p.m[1]];
       const bestPv = pvNotas(p.B, p.side, p.bestPv, 6);
       return {
-        ply: p.idx, nuoc: `${p.no}${p.side === s0 ? '.' : '…'}`, ben_di: sideName(p.side), ky_hieu: p.nota,
+        ply: p.idx, nuoc: `${p.no}${p.side === s0 ? '.' : '…'}`, ben_di: sideName(p.side), ky_hieu: p.nota, fen_truoc_nuoc: toFEN(p.B, p.side),
         danh_gia_cua_may: p.cls.label,
         diem_truoc_nuoc: fmtScore(toRed(p.best, p.side)), diem_sau_nuoc: fmtScore(toRed(p.played, p.side)),
         may_chon: bestPv[0] || null, dien_bien_may_chon: bestPv.join(' '),
         an_quan: cap ? `${NAME[cap.type]} ${sideName(cap.side)}` : null,
         chieu_tuong: inCheck(after, opp(p.side)), chieu_bi: !!p.mates,
         loi_thoai_hien_co: narrationOf(lines[p.line] || '') || null,
-        ...MoveFacts.forMove(p.B, p.side, p.m, p.playedPv, p.bestMove, p.bestPv)
+        ...MoveFacts.forMove(p.B, p.side, p.m, p.playedPv, p.bestMove, p.bestPv),
+        ...(p.alts ? { cac_phuong_an_cua_may: p.alts.map(a => ({ nuoc: notaOf(p.B, p.side, a.move), diem_sau_nuoc: fmtScore(toRed(a.score, p.side)), dien_bien: pvNotas(p.B, p.side, a.pv, 5).join(' ') })) } : {})
       };
     });
   }
@@ -100,6 +117,70 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
     ].filter(Boolean).join('\n\n');
   }
 
+  // ---------- phân tích một thế cờ (từ "Gợi ý nước đi") ----------
+  const SYSTEM_POS = `Bạn là huấn luyện viên cờ tướng, phân tích thế cờ bằng tiếng Việt cho người học.
+Dữ kiện do máy cờ tính và là sự thật; bạn diễn giải chúng, không tự tính thêm biến mới.
+
+Quy tắc:
+- Đọc vị trí quân từ sơ đồ bàn cờ và FEN được cung cấp, không tự hình dung. Chỉ nhắc nước đi có trong dữ kiện và viết đúng ký hiệu (ví dụ X2.4, P8-9).
+- Với mỗi phương án, giải thích ý đồ của 2 đến 3 nước đầu trong diễn biến: đe dọa gì, mở đường cho quân nào, ăn quân gì. Các nước xa hơn chỉ là máy đi tiếp, không suy diễn mục đích của chúng.
+- Phương án 1 là nước máy chọn. Nói vì sao phương án 2 và 3 kém hơn dựa trên chênh lệch điểm và dữ kiện: quân bị treo, nước đáp tốt nhất của đối phương, ăn quân trong diễn biến, cán cân vật chất, so sánh vị trí với nước máy chọn. Nếu điểm chênh dưới khoảng 0,3 thì nói các phương án gần tương đương, không bịa lý do.
+- Dữ kiện không đủ để kết luận thì nói rõ là không chắc.
+- Viết ngắn gọn bằng văn bản thường, không dùng bảng, theo ba phần có tiêu đề: Nhận định chung; Các phương án; Kết luận.
+- Nếu có tài liệu tham khảo của người dùng, dùng thuật ngữ và bài học trong đó khi thật sự liên quan.
+Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu "." là tiến, "/" là thoái, "-" là bình. Cột của Đỏ đánh số 9 đến 1 từ trái sang phải (nhìn từ phía Đỏ), cột của Đen đánh số 1 đến 9 từ trái sang phải trên sơ đồ.
+Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4, Sĩ/Tượng 2, Tốt 1, Tốt qua sông 2 (tính bằng số Tốt).`;
+  let task = 'script', pos = null;
+  function positionData(p) {
+    const { B, side, lines } = p, best = lines[0];
+    return {
+      fen: toFEN(B, side), ben_di: sideName(side), dang_bi_chieu: inCheck(B, side),
+      may_co: p.engine === 'pikafish' ? 'Pikafish' : 'máy có sẵn của trang', do_sau: p.depth,
+      cac_phuong_an: lines.map((l, i) => ({
+        thu_tu: i + 1, nuoc: notaOf(B, side, l.move), diem_sau_nuoc: fmtScore(toRed(l.score, side)),
+        dien_bien: pvNotas(B, side, l.pv, 6).join(' '), fen_sau_nuoc: toFEN(apply(B, l.move), opp(side)),
+        ...MoveFacts.forMove(B, side, l.move, l.pv, i ? best.move : null, i ? best.pv : null)
+      }))
+    };
+  }
+  function positionPrompt(p) {
+    return [
+      `Hãy phân tích thế cờ sau, ${sideName(p.side)} đi.`,
+      `Sơ đồ bàn cờ (hàng trên cùng là phía Đen; chữ hoa là quân Đỏ, chữ thường là quân Đen, dấu chấm là ô trống):\n${boardText(p.B)}`,
+      'Điểm tính theo phía Đỏ: dương là Đỏ ưu, âm là Đen ưu, 1,0 tương đương một Tốt.',
+      `Kết quả tính của máy cờ, gồm ${p.lines.length} phương án tốt nhất (JSON):\n${JSON.stringify(positionData(p), null, 1)}`,
+      notesIn.value.trim() ? `Tài liệu tham khảo của người dùng:\n${notesIn.value.trim()}` : ''
+    ].filter(Boolean).join('\n\n');
+  }
+  const posAllowed = p => { const a = new Set(); for (const l of p.lines) pvNotas(p.B, p.side, l.pv, 7).forEach(n => a.add(n)); return a; };
+  function showAnalysis(text, done) {
+    const warn = done ? unknownMoves(text, posAllowed(pos)) : [];
+    out.innerHTML = `<div class="cm-analysis">${esc(text)}</div>` +
+      (warn.length ? `<p class="cm-warn">Nhắc tới nước không có trong phân tích của máy: ${esc(warn.join(', '))}. Hãy kiểm tra lại.</p>` : '');
+  }
+  async function runPosition(Anthropic, apiKey) {
+    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+    goBtn.disabled = true; stopBtn.hidden = false; out.innerHTML = '';
+    say('Đang gửi thế cờ cho Claude…');
+    let text = '';
+    try {
+      stream = client.beta.messages.stream({
+        model: modelSel.value, max_tokens: 16000,
+        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+        output_config: { effort: 'medium' },
+        system: SYSTEM_POS,
+        messages: [{ role: 'user', content: positionPrompt(pos) }]
+      });
+      stream.on('text', d => { text += d; showAnalysis(text, false); say('Claude đang phân tích…'); });
+      const msg = await stream.finalMessage();
+      if (msg.stop_reason === 'refusal') { say('Claude từ chối yêu cầu này. Hãy thử lại.', true); return; }
+      text = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+      showAnalysis(text, true);
+      const u = msg.usage || {};
+      say(`Xong${msg.stop_reason === 'max_tokens' ? ' (bị cắt vì quá dài)' : ''}. ${msg.model} dùng ${(u.input_tokens || 0).toLocaleString('vi-VN')} token đầu vào, ${(u.output_tokens || 0).toLocaleString('vi-VN')} token đầu ra.`);
+    } catch (e) { apiError(e, Anthropic); } finally { stream = null; goBtn.disabled = false; stopBtn.hidden = true; }
+  }
+
   // Ký hiệu nước đi trong câu Claude viết mà không có trong dữ kiện của máy cờ.
   const MOVE_RE = /(?:^|[^\p{L}\p{N}])((?:Tg|[XMTSPB])[1-9ts][.\/\-][1-9]|[a-i][0-9][a-i][0-9])(?![\p{L}\p{N}])/gu;
   function unknownMoves(text, allowed) {
@@ -111,12 +192,13 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
 
   // ---------- gọi Claude ----------
   async function run() {
-    if (!data || data.snapshot !== fenIn.value + '\n' + scriptIn.value) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy bấm “Kiểm duyệt kịch bản” lại trước.', true); return; }
+    if (task === 'script' && (!data || data.snapshot !== fenIn.value + '\n' + scriptIn.value)) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy bấm “Kiểm duyệt kịch bản” lại trước.', true); return; }
     const apiKey = keyIn.value.trim();
     if (!apiKey) { say('Hãy nhập khóa API Anthropic (lấy ở console.anthropic.com).', true); keyIn.focus(); return; }
     try { if (remember.checked) localStorage.setItem(KEY_STORE, apiKey); else localStorage.removeItem(KEY_STORE); } catch (e) { /* bỏ qua */ }
     let Anthropic;
     try { Anthropic = await loadSdk(); } catch (e) { say(e.message, true); return; }
+    if (task === 'position') return runPosition(Anthropic, apiKey);
     const facts = buildFacts();
     const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
     goBtn.disabled = true; stopBtn.hidden = false; out.innerHTML = ''; result = null;
@@ -144,16 +226,17 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
       render();
       const u = msg.usage || {};
       say(`Xong. ${msg.model} dùng ${(u.input_tokens || 0).toLocaleString('vi-VN')} token đầu vào, ${(u.output_tokens || 0).toLocaleString('vi-VN')} token đầu ra. Sửa nếu cần rồi bấm “Chèn vào kịch bản”.`);
-    } catch (e) {
-      if (e instanceof Anthropic.APIUserAbortError) say('Đã dừng.');
-      else if (e instanceof Anthropic.AuthenticationError) say('Khóa API không đúng hoặc đã bị thu hồi.', true);
-      else if (e instanceof Anthropic.PermissionDeniedError) say('Khóa API không có quyền dùng model này.', true);
-      else if (e instanceof Anthropic.RateLimitError) say('Đang gửi quá nhiều yêu cầu hoặc hết hạn mức. Hãy thử lại sau ít phút.', true);
-      else if (e instanceof Anthropic.BadRequestError) say(`Yêu cầu không hợp lệ: ${e.message}`, true);
-      else if (e instanceof Anthropic.APIConnectionError) say('Không kết nối được tới Claude. Hãy kiểm tra mạng.', true);
-      else if (e instanceof Anthropic.APIError) say(`Lỗi từ Claude (${e.status}): ${e.message}`, true);
-      else say(`Lỗi: ${e.message || e}`, true);
-    } finally { stream = null; goBtn.disabled = false; stopBtn.hidden = true; }
+    } catch (e) { apiError(e, Anthropic); } finally { stream = null; goBtn.disabled = false; stopBtn.hidden = true; }
+  }
+  function apiError(e, Anthropic) {
+    if (e instanceof Anthropic.APIUserAbortError) say('Đã dừng.');
+    else if (e instanceof Anthropic.AuthenticationError) say('Khóa API không đúng hoặc đã bị thu hồi.', true);
+    else if (e instanceof Anthropic.PermissionDeniedError) say('Khóa API không có quyền dùng model này.', true);
+    else if (e instanceof Anthropic.RateLimitError) say('Đang gửi quá nhiều yêu cầu hoặc hết hạn mức. Hãy thử lại sau ít phút.', true);
+    else if (e instanceof Anthropic.BadRequestError) say(`Yêu cầu không hợp lệ: ${e.message}`, true);
+    else if (e instanceof Anthropic.APIConnectionError) say('Không kết nối được tới Claude. Hãy kiểm tra mạng.', true);
+    else if (e instanceof Anthropic.APIError) say(`Lỗi từ Claude (${e.status}): ${e.message}`, true);
+    else say(`Lỗi: ${e.message || e}`, true);
   }
 
   // ---------- dùng gói Claude qua claude.ai (sao chép – dán) ----------
@@ -175,9 +258,12 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
       '{"intro": "lời mở đầu", "lines": [{"ply": <giữ nguyên số "ply" trong dữ kiện>, "text": "lời thoại cho nước đó"}]}';
   }
   async function copyPrompt() {
-    if (!fresh()) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy bấm “Kiểm duyệt kịch bản” lại trước.', true); return; }
-    chatFacts = buildFacts();
-    const text = chatPrompt(chatFacts);
+    let text;
+    if (task === 'position') text = `${SYSTEM_POS}\n\n${positionPrompt(pos)}`;
+    else {
+      if (!fresh()) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy bấm “Kiểm duyệt kịch bản” lại trước.', true); return; }
+      chatFacts = buildFacts(); text = chatPrompt(chatFacts);
+    }
     promptOut.value = text;
     let ok = false;
     try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
@@ -185,9 +271,10 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
       const det = promptOut.closest('details'); det.open = true; promptOut.focus(); promptOut.select();
       try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
     }
-    copyInfo.textContent = ok ? `Đã sao chép yêu cầu cho ${chatFacts.length} nước (${text.length.toLocaleString('vi-VN')} ký tự).`
+    const what = task === 'position' ? `yêu cầu phân tích thế cờ (${pos.lines.length} phương án)` : `yêu cầu cho ${chatFacts.length} nước`;
+    copyInfo.textContent = ok ? `Đã sao chép ${what}, ${text.length.toLocaleString('vi-VN')} ký tự.`
       : 'Chưa sao chép tự động được: hãy mở “Xem nội dung yêu cầu”, chọn hết (Ctrl+A) rồi sao chép (Ctrl+C).';
-    say('Bước tiếp: dán vào claude.ai, rồi dán câu trả lời của Claude vào ô bên dưới.');
+    say(task === 'position' ? 'Bước tiếp: dán vào claude.ai và đọc phân tích ngay ở đó.' : 'Bước tiếp: dán vào claude.ai, rồi dán câu trả lời của Claude vào ô bên dưới.');
   }
   // Đọc câu trả lời dán vào: bỏ khung ``` nếu có, lấy phần từ { đầu tiên tới } cuối cùng.
   function readPasted() {
@@ -216,6 +303,7 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
       allowedAll.add(p.nota);
       pvNotas(p.B, p.side, p.bestPv, 6).forEach(n => allowedAll.add(n));
       pvNotas(p.B, p.side, p.playedPv, 7).forEach(n => allowedAll.add(n)); // cả đòn trừng phạt sau nước đã đi
+      for (const a of p.alts || []) pvNotas(p.B, p.side, a.pv, 5).forEach(n => allowedAll.add(n));
     }
     const row = (key, head, old, text, warn) => `<li><label class="cm-pick"><input type="checkbox" data-k="${key}" ${text ? 'checked' : ''}> ${head}</label>` +
       (old ? `<p class="cm-old">Đang có: ${esc(old)}</p>` : '') +
@@ -249,8 +337,26 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
   }
 
   // ai-panel.js gọi khi người dùng bấm "Viết lời thoại bằng Claude" trong kết quả kiểm duyệt.
+  // Khung dùng chung cho hai việc: viết lời thoại cho kịch bản, hoặc phân tích một thế cờ.
+  function setTask(t) {
+    task = t; const isPos = t === 'position';
+    $('cmTitle').textContent = isPos ? 'Phân tích thế cờ bằng Claude' : 'Lời thoại bằng Claude';
+    $('cmIntro').textContent = isPos ? 'Claude đọc sơ đồ bàn cờ và các phương án máy cờ vừa tính, rồi giải thích ý đồ từng phương án và vì sao máy chọn nước đầu tiên.'
+      : 'Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản.';
+    $('cmStyleRow').hidden = isPos; $('cmStepPaste').hidden = isPos; $('cmStepRead').hidden = !isPos;
+    goBtn.textContent = isPos ? 'Phân tích' : 'Viết lời thoại';
+  }
+  // ai-panel.js gọi từ kết quả "Gợi ý nước đi": { B, side, lines: [{ move, score, pv }], engine, depth }.
+  window.openPositionAnalysis = p => {
+    if (stream) stream.abort();
+    pos = p; data = null; setTask('position'); box.hidden = false; out.innerHTML = ''; result = null; chatFacts = null; pasteIn.value = ''; promptOut.value = ''; copyInfo.textContent = '';
+    say(`Thế cờ ${sideName(p.side)} đi, ${p.lines.length} phương án của máy sẵn sàng.`);
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    (!apiTools.hidden ? (keyIn.value ? goBtn : keyIn) : $('cmCopy')).focus();
+  };
   window.openCommentary = review => {
-    data = review; box.hidden = false; out.innerHTML = ''; result = null; chatFacts = null; pasteIn.value = ''; promptOut.value = ''; copyInfo.textContent = '';
+    if (stream) stream.abort();
+    setTask('script'); data = review; box.hidden = false; out.innerHTML = ''; result = null; chatFacts = null; pasteIn.value = ''; promptOut.value = ''; copyInfo.textContent = '';
     say(`${review.plies.length} nước đã kiểm duyệt sẵn sàng.`);
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     (!apiTools.hidden ? (keyIn.value ? goBtn : keyIn) : $('cmCopy')).focus();

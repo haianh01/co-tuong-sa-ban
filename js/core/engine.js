@@ -27,6 +27,22 @@ function parseFEN(fen) {
   if (kingIdx(B, 'r') < 0 || kingIdx(B, 'b') < 0) throw 'FEN phải có đủ Tướng Đỏ và Tướng Đen.';
   return { B, side: (parts[1] || 'w').toLowerCase() === 'b' ? 'b' : 'r' };
 }
+// Ghi thế cờ ra FEN (Tượng ghi "b", Mã ghi "n" như Pikafish và các phần mềm khác).
+const FEN_LETTER = { k: 'k', a: 'a', e: 'b', h: 'n', r: 'r', c: 'c', p: 'p' };
+function toFEN(B, side) {
+  const rows = [];
+  for (let r = 0; r < 10; r++) {
+    let row = '', gap = 0;
+    for (let c = 0; c < 9; c++) {
+      const p = B[r * 9 + c];
+      if (!p) { gap++; continue; }
+      if (gap) { row += gap; gap = 0; }
+      const l = FEN_LETTER[p.type]; row += p.side === 'r' ? l.toUpperCase() : l;
+    }
+    if (gap) row += gap; rows.push(row);
+  }
+  return rows.join('/') + (side === 'r' ? ' w' : ' b');
+}
 function pseudo(B, side) {
   const mv = [];
   for (let i = 0; i < 90; i++) {

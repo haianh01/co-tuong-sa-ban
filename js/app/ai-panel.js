@@ -184,11 +184,13 @@ const AIEngine = (() => {
       `<span class="ai-main"><b>${esc(nota(B, side, l.move))}</b> <span class="ai-ev">${esc(scoreText(l.score, side))}</span>` +
       `<span class="ai-pv">${esc(pvText(B, side, l.pv))}</span></span>` +
       `<button class="btn sm" type="button" data-i="${i}">Đi nước này</button></li>`).join('')}</ol>` +
-      `<p class="hint">Điểm tính theo Đỏ: dương là Đỏ ưu, 1,0 ≈ một Tốt. Dòng xám là diễn biến máy dự đoán.</p>`;
+      `<p class="hint">Điểm tính theo Đỏ: dương là Đỏ ưu, 1,0 ≈ một Tốt. Dòng xám là diễn biến máy dự đoán.</p>` +
+      '<div class="actions"><button class="btn sm" type="button" id="aiAsk">Nhờ Claude phân tích thế cờ này</button></div>';
     out.querySelectorAll('button[data-i]').forEach(btn => btn.onclick = () => {
       const l = lines[+btn.dataset.i]; out.innerHTML = '';
       if (Editor.play(l.move)) say(`Đã thêm ${nota(B, side, l.move)} vào kịch bản.`);
     });
+    $('aiAsk').onclick = () => window.openPositionAnalysis({ B, side, lines, engine: res.engine, depth: res.depth });
     Editor.showHints(lines.map((l, i) => ({ m: l.move, color: ARROW[i], w: i ? 10 : 16 })).reverse());
   }
 
@@ -244,6 +246,11 @@ const AIEngine = (() => {
       const after = apply(p.B, p.m);
       p.mates = !legal(after, opp(p.side)).length;
       p.cls = classify(p);
+      // Nước đáng xem lại: tính thêm 3 phương án tốt nhất để trả lời "sao không đi nước khác".
+      if (['inacc', 'mistake', 'blunder'].includes(p.cls.key) && legal(p.B, p.side).length > 1) {
+        const ra = await AIEngine.analyze({ board, side, time: T, multi: 3, split: false });
+        p.alts = ra.lines.map(l => ({ move: l.move, score: l.score, pv: l.pv }));
+      }
       remember(p.B, p.side, p.best, (p.depth || 0) + 100);
       remember(after, opp(p.side), -p.played, (p.depth || 0) + 100);
     }

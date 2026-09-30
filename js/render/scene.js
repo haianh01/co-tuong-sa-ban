@@ -32,8 +32,7 @@ function drawScene(c, t) {
   if (!cupBehind) drawCup(c);
   for (const o of TL.ov) if (o.k === 'dim') drawDim(c, o, byId, t);
   for (const o of TL.ov) {
-    if (o.k === 'ghost') { const it = items.find(i => i.pc.id === o.id); if (it) drawGhost(c, it.pc, o, t); continue; }
-    if (o.k === 'aura') { if (byId[o.id]) drawAura(c, byId[o.id], win(t, o.a, o.b), t); continue; }
+    if (o.k === 'glow') { if (byId[o.id]) drawGlow(c, byId[o.id], o.color, win(t, o.a, o.b), t); continue; }
     if (o.k === 'burst') { burst(c, o.x, o.z, o.t0, t); continue; }
     if (o.k === 'x') { drawX(c, o.x, o.z, win(t, o.a, o.b)); continue; }
     if (!o.elev) continue;

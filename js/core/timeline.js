@@ -112,7 +112,7 @@ function build(cfg) {
     if (noMoves) {
       over = true; result = side === 'r' ? 'Đỏ thắng' : 'Đen thắng';
       const tm = net ? net.end : t1 + 0.6;
-      ov.push({ k: 'mate', text: chk ? '將死' : '困斃', x: net ? net.river : riverSpot(B, []), a: tm, b: tm + 3.4 }); // chiếu bí / hết nước đi, viết trên sông
+      ov.push({ k: 'mate', text: chk ? '將死' : '困斃', x: net ? net.river : riverSpot(B), a: tm, b: tm + 3.4 }); // chiếu bí / hết nước đi, viết trên sông
       sounds.push({ t: tm, s: 'boom' }); shakes.push({ t: tm, a: 0.1 });
       hold2 = Math.max(hold, tm - t1) + 3.4;
       if (net) net.hold(t1 + hold2);
@@ -137,88 +137,41 @@ function build(cfg) {
   return { tremors, pieces, motions, keys, ov, caps, hud, sounds, shakes, chapters, errors, DUR, endA, title: cfg.title || 'Thế cờ', sub, result: result || (nMoves ? 'Hết thế cờ' : ''), moves: hud.map(h => h.text).join('   ') };
 }
 
-// Chiếu bí: vẽ lưới bí theo thứ tự kể chuyện. Quân vừa đi có vầng sáng xanh, các quân không
-// liên quan tối đi; tia chiếu chạy tới Tướng; bóng Tướng thử lần lượt từng ô chạy và bị gạch X (ô có
-// quân nhà thì xám); quân tưởng cứu được thử đỡ và bị gạch X; cuối cùng mới hiện chữ 將死 giữa sông.
-// Các lớp kéo dài tới hết cảnh (hold) để khung hình cuối còn đủ cả lưới.
+// Chiếu bí: chỉ làm sáng các quân tạo nên thế bí, lần lượt từng nhóm, không mũi tên hay dấu X.
+// Quân vừa đi có vầng sáng xanh; quân chiếu sáng đỏ (ngòi Pháo sáng cam); quân khống chế ô Tướng định
+// chạy sáng cam; quân nhà chặn đường Tướng sáng xám. Các quân khác tối đi, cuối cùng hiện chữ 將死.
+// Các lớp kéo dài tới hết cảnh (hold) để khung hình cuối còn đủ cả thế bí.
 function mateScene(B, side, moverId, t1, pace, ov, sounds) {
-  const net = mateNet(B, side), XZ = i => [i % 9 - 4, ((i / 9) | 0) - 4.5], Y = 0.32;
-  const kid = B[net.ki].id, [kx, kz] = XZ(net.ki), late = [], ids = new Set([kid, moverId]), cells = [[kx, kz]];
+  const net = mateNet(B, side), XZ = i => [i % 9 - 4, ((i / 9) | 0) - 4.5];
+  const kid = B[net.ki].id, [kx, kz] = XZ(net.ki), late = [], ids = new Set([kid, moverId]), pts = [[kx, kz]];
   const push = o => { ov.push(o); late.push(o); return o; };
-  // Đường tia: đi qua chân Mã nếu có, dừng trước ô đích một chút để mũi tên không đâm vào quân.
-  const beam = (pa, stop) => {
-    const pts = [pa.from, ...(pa.leg != null ? [pa.leg] : []), pa.to].map(i => { const [x, z] = XZ(i); return [x, Y, z]; });
-    const a = pts[pts.length - 2], b = pts[pts.length - 1];
-    pts[pts.length - 1] = [lerp(a[0], b[0], stop), Y, lerp(a[2], b[2], stop)];
-    return pts;
-  };
-  push({ k: 'aura', id: moverId, a: t1 + 0.05, b: 0 });
+  push({ k: 'glow', id: moverId, color: BLUE, a: t1 + 0.05, b: 0 });
   push({ k: 'cell', x: kx, z: kz, color: RED, strong: 1, pulse: 1, a: t1 + 0.1, b: 0 });
-  for (const ch of net.checkers) {
-    ids.add(B[ch.from].id);
-    push({ k: 'path', elev: 1, w: 0.075, pts: beam(ch, 0.86), color: RED, arrow: 1, a: t1 + 0.1, b: 0, p0: t1 + 0.1, p1: t1 + 0.6 });
-    if (ch.screen != null) { ids.add(B[ch.screen].id); push({ k: 'ring', id: B[ch.screen].id, color: AMBER, a: t1 + 0.4, b: 0 }); }
-  }
-  const STEP = 0.8 * pace;
-  let tg = t1 + 0.9 * pace;
-  const ctrlRing = new Set();
-  for (const e of net.escapes) {
-    const [sx, sz] = XZ(e.sq); cells.push([sx, sz]);
-    if (e.own != null) {
-      const id = B[e.own].id; ids.add(id);
-      push({ k: 'cell', x: sx, z: sz, color: '#9aa4ae', a: tg, b: 0 });
-      push({ k: 'ring', id, color: '#b9c2cc', a: tg, b: 0 });
-      sounds.push({ t: tg, s: 'clack', p: 'a' });
-      tg += STEP * 0.6; continue;
-    }
-    const cid = B[e.ctrl.from].id; ids.add(cid);
-    if (e.ctrl.screen != null && B[e.ctrl.screen]) ids.add(B[e.ctrl.screen].id);
-    ov.push({ k: 'ghost', id: kid, from: [kx, 0, kz], to: [sx, 0, sz], m0: tg, m1: tg + 0.3 * pace, a: tg, b: tg + STEP * 1.1 });
-    sounds.push({ t: tg, s: 'whoosh', d: 0.3, p: 'k' });
-    if (!ctrlRing.has(cid)) { ctrlRing.add(cid); push({ k: 'ring', id: cid, color: AMBER, a: tg + 0.25 * pace, b: 0 }); }
-    // Quân khống chế cũng là quân đang chiếu: tia đỏ đã vẽ tới Tướng, chỉ nối tiếp phần sau lưng Tướng (nếu có).
-    const via = net.checkers.some(ch => ch.from === e.ctrl.from) ? (e.ctrl.between.includes(net.ki) ? { from: net.ki, to: e.sq } : null) : e.ctrl;
-    if (via) push({ k: 'path', elev: 1, w: 0.065, pts: beam(via, 0.8), color: AMBER, dash: 1, arrow: 1, a: tg + 0.25 * pace, b: 0, p0: tg + 0.25 * pace, p1: tg + 0.55 * pace });
-    push({ k: 'x', x: sx, z: sz, a: tg + 0.55 * pace, b: 0 });
-    push({ k: 'cell', x: sx, z: sz, color: RED, a: tg + 0.55 * pace, b: 0 });
-    sounds.push({ t: tg + 0.55 * pace, s: 'clack', p: 'k' });
-    tg += STEP * 1.15;
-  }
-  for (const d of net.defenders) {
-    const [fx, fz] = XZ(d.from), [dx, dz] = XZ(d.to);
-    ov.push({ k: 'ghost', id: B[d.from].id, from: [fx, 0, fz], to: [dx, 0, dz], m0: tg, m1: tg + 0.35 * pace, a: tg, b: tg + STEP * 1.2 });
-    sounds.push({ t: tg, s: 'whoosh', d: 0.35, p: B[d.from].type });
-    push({ k: 'x', x: dx, z: dz, a: tg + 0.45 * pace, b: 0 });
-    sounds.push({ t: tg + 0.45 * pace, s: 'clack', p: B[d.from].type });
-    tg += STEP * 1.3;
-  }
-  // Những ô cần giữ sáng khi làm tối phần còn lại của bàn.
-  const beams = late.filter(o => o.k === 'path').map(o => o.pts), river = riverSpot(B, beams);
-  push({ k: 'dim', ids: [...ids], cells, river, a: t1 + 0.3, b: 0 });
-  // Khung camera: ôm hết Tướng, quân chiếu, quân khống chế, các ô chạy và chỗ viết chữ trên sông.
-  const pts = cells.concat([[river, 0]], net.checkers.map(c => XZ(c.from)), net.escapes.filter(e => e.ctrl).map(e => XZ(e.ctrl.from)));
+  let tg = t1 + 0.35 * pace;
+  const light = (i, color) => {
+    const id = B[i].id; if (ids.has(id) && id !== moverId) return;
+    ids.add(id); pts.push(XZ(i));
+    if (id !== moverId) { push({ k: 'glow', id, color, a: tg, b: 0 }); sounds.push({ t: tg, s: 'clack', p: B[i].type }); tg += 0.4 * pace; }
+  };
+  for (const ch of net.checkers) { light(ch.from, RED); if (ch.screen != null) light(ch.screen, AMBER); }
+  tg += 0.2 * pace;
+  for (const e of net.escapes) if (e.ctrl) { light(e.ctrl.from, AMBER); if (e.ctrl.screen != null && B[e.ctrl.screen]) light(e.ctrl.screen, AMBER); }
+  for (const e of net.escapes) if (e.own != null) light(e.own, '#c3ccd6');
+  const river = riverSpot(B);
+  push({ k: 'dim', ids: [...ids], cells: [[kx, kz]], river, a: t1 + 0.3, b: 0 });
+  // Khung camera: ôm hết các quân trong thế bí và chỗ viết chữ trên sông.
+  pts.push([river, 0]);
   const xs = pts.map(q => q[0]), zs = pts.map(q => q[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
   return {
-    river, end: tg + 0.2, focus: { x: (x0 + x1) / 2, z: (z0 + z1) / 2, r: Math.max(2.4, Math.hypot(x1 - x0, z1 - z0) / 2 + 1.3) },
+    river, end: tg + 0.3 * pace, focus: { x: (x0 + x1) / 2, z: (z0 + z1) / 2, r: Math.max(2.4, Math.hypot(x1 - x0, z1 - z0) / 2 + 1.3) },
     hold: tEnd => { for (const o of late) o.b = tEnd + 1; }
   };
 }
 
-// Chỗ viết chữ 將死 trên sông: giữa sông (giữa 楚河 và 漢界); nếu ở đó có quân đứng sát bờ sông hay tia
-// cắt ngang thì viết thay vào chỗ chữ 楚河 hoặc 漢界 (chữ gốc mờ đi trong lúc đó).
-function riverSpot(B, beams) {
-  const cost = x => {
-    let n = 0;
-    for (const r of [4, 5]) for (let c = 0; c < 9; c++) if (B[r * 9 + c] && Math.abs(c - 4 - x) < 0.95) n += 2;
-    for (const pts of beams) for (let i = 1; i < pts.length; i++) {
-      const [x1, , z1] = pts[i - 1], [x2, , z2] = pts[i];
-      if ((z1 - 0.3) * (z2 - 0.3) < 0 || (z1 + 0.3) * (z2 + 0.3) < 0 || Math.abs(z1) < 0.3) {
-        const u = z2 === z1 ? 0 : clamp((0 - z1) / (z2 - z1)), xc = lerp(x1, x2, u);
-        if (Math.abs(xc - x) < 0.7) n += 1;
-      }
-    }
-    return n;
-  };
+// Chỗ viết chữ 將死 trên sông: giữa sông (giữa 楚河 và 漢界); nếu ở đó có quân đứng sát bờ sông thì viết
+// thay vào chỗ chữ 楚河 hoặc 漢界 (chữ gốc mờ đi trong lúc đó).
+function riverSpot(B) {
+  const cost = x => { let n = 0; for (const r of [4, 5]) for (let c = 0; c < 9; c++) if (B[r * 9 + c] && Math.abs(c - 4 - x) < 0.95) n++; return n; };
   return [0, -2, 2].reduce((best, x) => (cost(x) < cost(best) ? x : best));
 }
