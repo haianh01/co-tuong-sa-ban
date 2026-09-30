@@ -81,24 +81,20 @@ function drawDim(c, o, byId, t) {
   mc.globalCompositeOperation = 'source-over';
   c.drawImage(maskCv, 0, 0);
 }
-// Bóng quân (trong suốt) thử đi một nước: Tướng thử chạy, quân thử đỡ.
-function drawGhost(c, pc, o, t) {
-  const a = win(t, o.a, o.b, 0.25); if (a <= 0.01) return;
-  const u = ease(clamp((t - o.m0) / Math.max(0.01, o.m1 - o.m0)));
-  drawPiece(c, pc, { x: lerp(o.from[0], o.to[0], u), y: 0.35 * 4 * u * (1 - u), z: lerp(o.from[2], o.to[2], u) }, a * 0.5);
-}
-// Vầng sáng xanh quanh quân vừa đi nước chiếu bí (chỉ là vòng sáng, không che mặt quân).
-function drawAura(c, pos, a, t) {
+// Quầng sáng quanh một quân trong thế bí (chỉ là vòng sáng quanh quân, không che mặt quân).
+function drawGlow(c, pos, color, a, t) {
   if (a <= 0.01) return; const yy = pos.y + HT + 0.03;
-  drawRing(c, pos.x, pos.z, 0.6 + 0.04 * Math.sin(t * 6), BLUE, a, yy);
-  drawRing(c, pos.x, pos.z, 0.78 + 0.06 * Math.sin(t * 6 + 1.5), BLUE, a * 0.45, yy);
+  drawRing(c, pos.x, pos.z, 0.58 + 0.03 * Math.sin(t * 6), color, a, yy);
+  drawRing(c, pos.x, pos.z, 0.74 + 0.05 * Math.sin(t * 6 + 1.5), color, a * 0.4, yy);
 }
 // Chữ 將死 (chiếu bí) nhỏ, khắc trên sông (chỗ trống do riverSpot chọn), vẽ dưới quân nên không che quân nào.
 function drawRiverMark(c, text, x, a, grow) {
   if (a <= 0.01) return;
+  const s = scaleAt(x, 0, 0); // số pixel cho một ô cờ: độ tỏa sáng co theo cỡ chữ để chữ nhỏ không bị nhòe
   c.save(); planeT(c, x, 0.014, 0); c.scale(lerp(1.3, 1, grow), lerp(1.3, 1, grow));
   c.font = `900 52px ${CJK}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = a;
-  c.shadowColor = RED; c.shadowBlur = 18; c.fillStyle = RED; c.fillText(text, 0, 3);
-  c.shadowBlur = 0; c.fillStyle = 'rgba(255,225,205,.35)'; c.fillText(text, -1, 1);
+  c.shadowColor = RED; c.shadowBlur = Math.max(2, s * 0.12); c.fillStyle = RED; c.fillText(text, 0, 3);
+  c.shadowBlur = 0; c.fillStyle = '#d42a1a'; c.fillText(text, 0, 3);
+  c.fillStyle = 'rgba(255,225,205,.3)'; c.fillText(text, -1, 1);
   c.restore();
 }

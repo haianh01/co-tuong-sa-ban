@@ -1,11 +1,9 @@
 'use strict';
 // Lưới chiếu bí: vì sao Tướng hết đường, dùng cho hiệu ứng video lúc chiếu bí.
-// - checkers: quân đang chiếu, kèm đường đánh (ngòi Pháo, chân Mã, các ô ở giữa).
+// - checkers: quân đang chiếu, kèm đường đánh (ngòi Pháo, chân Mã).
 // - escapes: từng ô Tướng định chạy trong cung: bị quân nhà chặn (own) hay bị quân địch khống chế (ctrl).
 //   Ô khống chế được tính đúng luật: thử cho Tướng bước sang rồi xem quân nào đánh tới, nên tính cả
 //   Pháo có ngòi mới và hai Tướng lộ mặt. Mỗi ô chỉ giữ một quân khống chế, chọn sao cho ít quân nhất.
-// - defenders: tối đa 2 quân trông như cứu được (ăn quân chiếu, chặn giữa đường, dời ngòi Pháo) nhưng
-//   đi thì Tướng vẫn bị chiếu.
 
 // Đường đánh của quân ở ô `from` tới ô `to` trên bàn N.
 function attackPath(N, from, to) {
@@ -48,19 +46,5 @@ function mateNet(B, side) {
   }
   for (const e of escapes) { delete e.by; delete e.N; }
 
-  // Quân tưởng cứu được: 0 = ăn quân chiếu, 1 = chặn giữa đường, 2 = dời ngòi Pháo.
-  const tries = new Map();
-  for (const m of pseudo(B, side)) {
-    if (m[0] === ki) continue;
-    let pr = 9;
-    for (const ch of checkers) {
-      if (m[1] === ch.from) pr = Math.min(pr, 0);
-      else if (ch.between.includes(m[1])) pr = Math.min(pr, 1);
-      else if (ch.screen === m[0]) pr = Math.min(pr, 2);
-    }
-    if (pr === 9 || !inCheck(apply(B, m), side)) continue;
-    const old = tries.get(m[0]); if (!old || pr < old.pr) tries.set(m[0], { from: m[0], to: m[1], pr });
-  }
-  const defenders = [...tries.values()].sort((a, b) => a.pr - b.pr).slice(0, 2);
-  return { ki, checkers, escapes, defenders };
+  return { ki, checkers, escapes };
 }
