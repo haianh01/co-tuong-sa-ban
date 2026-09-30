@@ -126,30 +126,51 @@ const AIEngine = (() => {
     evalBar.setAttribute('aria-valuetext', `${scoreText(side === 'r' ? red : -red, side)}. Đỏ ${pct.toFixed(0)}%, Đen ${(100 - pct).toFixed(0)}%`);
   }
   let evalPos = null, evalTimer = 0, evalSeq = 0;
+  // Mũi tên gợi ý tự động: mỗi thế cờ tính một lần (MultiPV 3), dùng chung lần tính với thanh đánh giá.
+  const hintAuto = $('hintAuto'), hintCache = new Map();
+  let hintShown = null;
+  function applyHints(key, lines) {
+    if (hintShown === key && Editor.hintCount()) return; // đang hiện đúng các mũi tên này (tránh vẽ lại vô hạn)
+    hintShown = key;
+    Editor.showHints(lines.map((l, i) => ({ m: l.move, color: ARROW[i], w: i ? 10 : 16 })).reverse());
+  }
   // Bàn cờ tương tác gọi hàm này mỗi khi thế cờ hiển thị thay đổi.
   window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); };
   async function runEval() {
     const pos = evalPos;
     evalBar.classList.toggle('off', !evalAuto.checked);
     if (!pos || !pos.valid) { showBar(null); return; }
-    const { B, s: side } = pos;
+    const { B, s: side } = pos, key = posKey(B, side);
     if (!legal(B, side).length) { showBar(side === 'r' ? -MATE : MATE, side); return; } // hết nước là thua
-    const hit = evalCache.get(posKey(B, side));
-    if (hit) { showBar(hit.red, side); return; }
-    if (!evalAuto.checked) { showBar(null); return; }
-    if (busy) return; // đang gợi ý / kiểm duyệt: giữ nguyên thanh, kết quả sẽ tự cập nhật
+    const wantHints = hintAuto.checked && pos.record, hh = wantHints ? hintCache.get(key) : null;
+    if (hh) applyHints(key, hh);
+    const hit = evalCache.get(key);
+    if (hit) showBar(hit.red, side);
+    else if (!evalAuto.checked) showBar(null);
+    if ((hit || !evalAuto.checked) && (!wantHints || hh)) return;
+    if (busy) return; // đang gợi ý / kiểm duyệt: giữ nguyên, kết quả sẽ tự cập nhật
     // Pikafish chưa khởi động (chưa có mạng nơ-ron) thì không tự khởi động ở đây.
-    if (engineSel.value === 'pikafish' && !PikafishEngine.info()) { showBar(null); return; }
-    const my = ++evalSeq;
+    if (engineSel.value === 'pikafish' && !PikafishEngine.info()) { if (!hit) showBar(null); return; }
+    const my = ++evalSeq, pf = AIEngine.kind() === 'pikafish';
     evalBar.classList.add('busy');
     try {
-      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: AIEngine.kind() === 'pikafish' ? 500 : 350, split: false });
+      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: wantHints ? (pf ? 900 : 700) : (pf ? 500 : 350), multi: wantHints ? 3 : 1, split: false });
       if (!r.lines.length) return;
       remember(B, side, r.lines[0].score, r.depth);
-      if (my === evalSeq && evalPos === pos) showBar(toRed(r.lines[0].score, side), side);
+      if (wantHints) hintCache.set(key, r.lines);
+      if (my === evalSeq && evalPos === pos) {
+        if (evalAuto.checked || hit) showBar(toRed(r.lines[0].score, side), side);
+        if (wantHints && hintAuto.checked) applyHints(key, r.lines);
+      }
     } catch (e) { /* bị dừng vì có việc khác: bỏ qua */ }
     finally { if (my === evalSeq) evalBar.classList.remove('busy'); }
   }
+  hintAuto.addEventListener('change', () => {
+    try { localStorage.setItem('hintAuto', hintAuto.checked ? '1' : '0'); } catch (e) { /* bỏ qua */ }
+    if (!hintAuto.checked && hintShown) { hintShown = null; Editor.showHints([]); }
+    runEval();
+  });
+  try { if (localStorage.getItem('hintAuto') === '0') hintAuto.checked = false; } catch (e) { /* bỏ qua */ }
   evalAuto.addEventListener('change', () => { try { localStorage.setItem('evalAuto', evalAuto.checked ? '1' : '0'); } catch (e) { /* bỏ qua */ } runEval(); });
   try { if (localStorage.getItem('evalAuto') === '0') evalAuto.checked = false; } catch (e) { /* bỏ qua */ }
 
@@ -178,7 +199,7 @@ const AIEngine = (() => {
     } catch (e) { setBusy(false); say(e.message === 'stopped' ? 'Đã dừng.' : `Lỗi khi tính: ${e.message || e}`, e.message !== 'stopped'); return; }
     setBusy(false);
     const lines = res.lines;
-    if (lines.length) { remember(B, side, lines[0].score, res.depth + 100); showBar(toRed(lines[0].score, side), side); }
+    if (lines.length) { remember(B, side, lines[0].score, res.depth + 100); showBar(toRed(lines[0].score, side), side); hintCache.set(posKey(B, side), lines); hintShown = posKey(B, side); }
     say(`Lượt ${sideName(side)}. ${res.engine === 'pikafish' ? 'Pikafish' : 'Máy có sẵn'} đã xét ${res.nodes.toLocaleString('vi-VN')} thế cờ, độ sâu ${res.depth}.`);
     out.innerHTML = `<ol class="ai-list">${lines.map((l, i) => `<li><span class="ai-dot" style="background:${ARROW[i]}"></span>` +
       `<span class="ai-main"><b>${esc(nota(B, side, l.move))}</b> <span class="ai-ev">${esc(scoreText(l.score, side))}</span>` +

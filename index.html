@@ -59,6 +59,17 @@
           <button class="btn sm" id="edFix" type="button" hidden>Xóa từ dòng lỗi trở xuống</button>
           <button class="btn sm" id="edUndoReset" type="button" hidden>Hoàn tác, lấy lại kịch bản cũ</button>
         </div>
+        <div class="ed-draw" role="group" aria-label="Vẽ để phân tích">
+          <button class="btn sm" id="edPen" type="button" aria-pressed="false" title="Bật để vẽ bằng chuột trái hoặc ngón tay">Vẽ mũi tên</button>
+          <span class="pen-colors" id="edPenColors">
+            <button type="button" data-c="#e5484d" aria-pressed="true" aria-label="Màu đỏ" style="--c:#e5484d"></button>
+            <button type="button" data-c="#f5a524" aria-pressed="false" aria-label="Màu vàng" style="--c:#f5a524"></button>
+            <button type="button" data-c="#2fbf6a" aria-pressed="false" aria-label="Màu xanh lá" style="--c:#2fbf6a"></button>
+            <button type="button" data-c="#3b82f6" aria-pressed="false" aria-label="Màu xanh dương" style="--c:#3b82f6"></button>
+          </span>
+          <button class="btn sm" id="edMarksClear" type="button" disabled>Xóa nét vẽ</button>
+          <p class="hint">Kéo chuột phải từ ô này sang ô khác để vẽ mũi tên, bấm chuột phải vào một ô để khoanh tròn; vẽ lại đúng nét đó để xóa. Trên điện thoại: bật “Vẽ mũi tên” rồi kéo bằng ngón tay. Nét vẽ tự xóa khi đi nước mới.</p>
+        </div>
         <div id="edSetupTools">
           <p class="hint">Kéo quân để di chuyển, kéo ra ngoài bàn để bỏ quân. Hoặc chọn một quân trong khay rồi bấm vào giao điểm để đặt.</p>
           <div class="tray" id="edTray"></div>
@@ -102,6 +113,7 @@
             </div>
           </div>
           <label class="chk"><input type="checkbox" id="evalAuto" checked> Tự chấm thế cờ sau mỗi nước (thanh đánh giá cạnh bàn cờ)</label>
+          <label class="chk"><input type="checkbox" id="hintAuto" checked> Tự hiện mũi tên gợi ý 3 nước tốt nhất (khi ghi nước đi)</label>
           <div class="actions">
             <button class="btn" id="aiHint" type="button">Gợi ý nước đi</button>
             <button class="btn" id="aiReview" type="button">Kiểm duyệt kịch bản</button>

@@ -85,6 +85,12 @@ textarea.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-s
 [hidden]{display:none !important}
 .ed-fix{margin-top:-8px}
 .ed-fix:not(:has(button:not([hidden]))){display:none}
+.ed-draw{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ed-draw .hint{flex-basis:100%;margin:0}
+.ed-draw #edPen[aria-pressed="true"]{background:var(--brass);color:#1f1206;border-color:var(--brass)}
+.pen-colors{display:flex;gap:6px}
+.pen-colors button{width:24px;height:24px;border-radius:50%;background:var(--c);border:2px solid transparent;cursor:pointer;padding:0}
+.pen-colors button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--panel) inset}
 .ai-box{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ai-head h3{margin:0;font-size:16px}
