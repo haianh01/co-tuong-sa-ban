@@ -110,6 +110,34 @@
           <p class="ai-status" id="aiStatus" role="status" aria-live="polite"></p>
           <div id="aiOut"></div>
         </div>
+        <div class="ai-box cm-box" id="cmBox" role="region" aria-labelledby="cmTitle" hidden>
+          <div class="ai-head">
+            <h3 id="cmTitle">Lời thoại bằng Claude</h3>
+            <button class="btn sm" id="cmClose" type="button">Đóng</button>
+          </div>
+          <p class="hint">Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản. Cần mạng và khóa API của Anthropic; mỗi lần viết tính phí theo lượng chữ.</p>
+          <div class="field">
+            <label for="cmKey">Khóa API Anthropic</label>
+            <input type="password" id="cmKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+            <label class="chk"><input type="checkbox" id="cmRemember"> Nhớ khóa trên máy này (chỉ lưu trong trình duyệt, không gửi đi đâu ngoài Anthropic)</label>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="cmModel">Model</label>
+              <select id="cmModel"><option value="claude-opus-5-5">Claude Opus 5.5 (mặc định)</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5 (rẻ hơn)</option></select></div>
+            <div class="field"><label for="cmStyle">Giọng văn</label>
+              <select id="cmStyle"><option value="lesson">Giảng bài</option><option value="match">Bình luận trận đấu</option><option value="short">Ngắn gọn</option></select></div>
+          </div>
+          <div class="field">
+            <label for="cmNotes">Tài liệu tham khảo (tùy chọn)</label>
+            <textarea id="cmNotes" rows="3" placeholder="Dán đoạn lý thuyết liên quan, ví dụ ý chính của bài Thuận pháo, để Claude dùng đúng thuật ngữ."></textarea>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="cmGo" type="button">Viết lời thoại</button>
+            <button class="btn" id="cmStop" type="button" hidden>Dừng</button>
+          </div>
+          <p class="ai-status" id="cmStatus" role="status" aria-live="polite"></p>
+          <div id="cmOut"></div>
+        </div>
       </div>
     </div>
     <div class="grid">
@@ -205,5 +233,6 @@
 <script src="js/app/board-editor.js"></script>
 <script src="js/app/pikafish.js"></script>
 <script src="js/app/ai-panel.js"></script>
+<script src="js/app/ai-commentary.js"></script>
 </body>
 </html>

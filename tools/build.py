@@ -22,6 +22,11 @@ pf = root / 'engine' / 'pikafish.js'
 if pf.exists():
     html = html.replace('</body>', '<script>\n' + pf.read_text(encoding='utf-8') + '</script>\n</body>')
 
+# Thư viện Anthropic cho "Lời thoại bằng Claude" (nạp sẵn để file gộp không cần thư mục vendor/).
+sdk = root / 'vendor' / 'anthropic-sdk.js'
+if sdk.exists():
+    html = html.replace('</body>', '<script>\n' + sdk.read_text(encoding='utf-8') + '</script>\n</body>')
+
 out = root / 'dist' / 'co-tuong-sa-ban.html'
 out.parent.mkdir(exist_ok=True)
 out.write_text(html, encoding='utf-8')
