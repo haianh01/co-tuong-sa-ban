@@ -260,7 +260,7 @@ const AIEngine = (() => {
     setBusy(false);
     const done = plies.filter(p => p.cls);
     runEval();
-    lastReview = { snapshot, plies: done };
+    lastReview = { snapshot, plies: done, s0 };
     renderReview(done, s0);
     const bad = done.filter(p => ['inacc', 'mistake', 'blunder'].includes(p.cls.key)).length;
     if (stopped && !done.length) { say('Đã dừng, chưa chấm xong nước nào.'); return; }
@@ -286,7 +286,8 @@ const AIEngine = (() => {
         `<span class="tag">${esc(p.cls.label)}</span><span class="ai-ev">${esc(scoreText(p.played, p.side))}</span>` +
         (same(p.m, p.bestMove) ? '' : `<span class="alt">Máy chọn ${esc(nota(p.B, p.side, p.bestMove))}</span>`) +
         `</button></li>`).join('')}</ol>` +
-      (flagged.length ? `<div class="actions"><button class="btn sm" type="button" id="aiInsert">Chèn nhận xét của máy vào kịch bản</button></div>` : '');
+      `<div class="actions">${flagged.length ? '<button class="btn sm" type="button" id="aiInsert">Chèn nhận xét của máy vào kịch bản</button>' : ''}` +
+      '<button class="btn sm" type="button" id="aiWrite">Viết lời thoại bằng Claude</button></div>';
     const viewPly = p => {
       const hints = [{ m: p.m, color: same(p.m, p.bestMove) ? ARROW[0] : '#f59e0b', w: 16 }];
       if (!same(p.m, p.bestMove)) hints.unshift({ m: p.bestMove, color: ARROW[0], w: 12 });
@@ -297,6 +298,10 @@ const AIEngine = (() => {
     };
     out.querySelectorAll('.ai-review button').forEach(btn => btn.onclick = () => viewPly(plies[+btn.dataset.i]));
     wireGraph(plies, s0, viewPly);
+    $('aiWrite').onclick = () => {
+      if (!lastReview || lastReview.snapshot !== fenIn.value + '\n' + scriptIn.value) { say('Kịch bản đã thay đổi sau khi chấm. Hãy bấm “Kiểm duyệt kịch bản” lại.', true); return; }
+      window.openCommentary(lastReview);
+    };
     const ins = $('aiInsert');
     if (ins) ins.onclick = () => {
       if (!lastReview || lastReview.snapshot !== fenIn.value + '\n' + scriptIn.value) { say('Kịch bản đã thay đổi sau khi chấm. Hãy bấm “Kiểm duyệt kịch bản” lại.', true); return; }
