@@ -138,6 +138,7 @@ a.btn{text-decoration:none}
 .cm-old{margin:0;font-size:12.5px;color:var(--muted)}
 .cm-warn{margin:0;font-size:12.5px;color:var(--err);font-weight:600}
 .cm-list textarea{font-size:14px}
+.cm-analysis{white-space:pre-wrap;font-size:14px;line-height:1.55;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);margin-bottom:6px}
 .pgn{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--panel)}
 .pgn summary{font-size:13px;font-weight:700;cursor:pointer}
 .pgn[open] summary{margin-bottom:8px}

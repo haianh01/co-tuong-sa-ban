@@ -115,12 +115,12 @@
             <h3 id="cmTitle">Lời thoại bằng Claude</h3>
             <button class="btn sm" id="cmClose" type="button">Đóng</button>
           </div>
-          <p class="hint">Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản.</p>
+          <p class="hint" id="cmIntro">Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản.</p>
           <div class="seg" role="group" aria-label="Cách dùng Claude">
             <button id="cmModeChat" type="button" aria-pressed="true">Gói Claude (sao chép – dán)</button>
             <button id="cmModeApi" type="button" aria-pressed="false">Khóa API</button>
           </div>
-          <div class="row2">
+          <div class="row2" id="cmStyleRow">
             <div class="field"><label for="cmStyle">Giọng văn</label>
               <select id="cmStyle"><option value="lesson">Giảng bài</option><option value="match">Bình luận trận đấu</option><option value="short">Ngắn gọn</option></select></div>
           </div>
@@ -133,7 +133,8 @@
             <ol class="cm-steps">
               <li><button class="btn primary" id="cmCopy" type="button">Sao chép yêu cầu</button> <span class="ok" id="cmCopyInfo" role="status"></span></li>
               <li><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">Mở claude.ai</a> dán vào ô chat (Ctrl+V) rồi gửi.</li>
-              <li>Chờ Claude trả lời xong, bấm nút sao chép dưới câu trả lời, rồi dán vào đây:
+              <li id="cmStepRead" hidden>Đọc phân tích ngay trên claude.ai, không cần dán lại vào đây.</li>
+              <li id="cmStepPaste">Chờ Claude trả lời xong, bấm nút sao chép dưới câu trả lời, rồi dán vào đây:
                 <textarea id="cmPaste" rows="4" spellcheck="false" placeholder='Câu trả lời của Claude, dạng {"intro": "…", "lines": [...]}'></textarea>
                 <button class="btn primary" id="cmRead" type="button">Đọc kết quả</button></li>
             </ol>
