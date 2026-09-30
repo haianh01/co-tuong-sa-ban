@@ -235,10 +235,11 @@ const AIEngine = (() => {
       const r = await AIEngine.analyze({ board, side, time: T, split: false });
       const best = r.lines[0];
       p.bestMove = best.move; p.best = best.score; p.bestPv = best.pv; p.depth = r.depth;
-      if (same(best.move, p.m)) p.played = best.score;
+      if (same(best.move, p.m)) { p.played = best.score; p.playedPv = best.pv; }
       else {
         const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false });
         p.played = rp.lines.length ? rp.lines[0].score : best.score;
+        p.playedPv = rp.lines.length ? rp.lines[0].pv : [p.m]; // bắt đầu bằng chính nước đã đi: phần sau là đòn đáp của đối phương
       }
       const after = apply(p.B, p.m);
       p.mates = !legal(after, opp(p.side)).length;
@@ -306,14 +307,25 @@ const AIEngine = (() => {
     if (ins) ins.onclick = () => {
       if (!lastReview || lastReview.snapshot !== fenIn.value + '\n' + scriptIn.value) { say('Kịch bản đã thay đổi sau khi chấm. Hãy bấm “Kiểm duyệt kịch bản” lại.', true); return; }
       const lines = scriptIn.value.split('\n');
-      for (const p of flagged.slice().reverse()) {
-        const alt = nota(p.B, p.side, p.bestMove);
-        lines.splice(p.line + 1, 0, `| Máy nhận xét: ${p.nota} là nước ${p.cls.label.toLowerCase()}, tốt hơn là ${alt}.`);
-      }
+      for (const p of flagged.slice().reverse()) lines.splice(p.line + 1, 0, `| Máy nhận xét: ${machineNote(p)}`);
       scriptIn.value = lines.join('\n'); scriptIn.dispatchEvent(new Event('input', { bubbles: true }));
       out.innerHTML = ''; lastReview = null;
       say(`Đã chèn ${flagged.length} dòng nhận xét vào kịch bản. Bấm “Dựng video” để xem.`);
     };
+  }
+
+  // Nhận xét không cần Claude: nêu lý do cụ thể nhất đo được (quân treo + đòn đáp, rồi so sánh vị trí).
+  function machineNote(p) {
+    const alt = nota(p.B, p.side, p.bestMove);
+    let why = '';
+    try {
+      const f = MoveFacts.forMove(p.B, p.side, p.m, p.playedPv, p.bestMove, p.bestPv);
+      const lost = /^(Đỏ|Đen) lời/.test(f.can_bang_vat_chat_sau_dien_bien) && !f.can_bang_vat_chat_sau_dien_bien.startsWith(sideName(p.side));
+      if (f.quan_bi_treo_sau_nuoc.length) why = `${f.quan_bi_treo_sau_nuoc[0]}`;
+      if (lost && f.nuoc_dap_tot_nhat_cua_doi_phuong) why += `${why ? '; ' : ''}${sideName(opp(p.side))} đáp ${f.nuoc_dap_tot_nhat_cua_doi_phuong}, ${f.can_bang_vat_chat_sau_dien_bien}`;
+      if (!why && f.so_sanh_vi_tri_voi_nuoc_may_chon && f.so_sanh_vi_tri_voi_nuoc_may_chon.length) why = f.so_sanh_vi_tri_voi_nuoc_may_chon.slice(0, 2).join('; ');
+    } catch (e) { /* thiếu dữ kiện: chỉ nêu nước tốt hơn */ }
+    return `${p.nota} là nước ${p.cls.label.toLowerCase()}${why ? `: ${why}` : ''}. Tốt hơn là ${alt}.`;
   }
 
   // ---------- biểu đồ diễn biến ván đấu ----------
