@@ -37,12 +37,18 @@ Dữ kiện về từng nước do máy cờ cung cấp và là sự thật; b�
 Quy tắc:
 - Chỉ dùng dữ kiện được cung cấp. Không tự nghĩ ra nước đi, biến thế hay quân cờ không có trong dữ kiện. Khi nhắc tới một nước, viết đúng ký hiệu có trong dữ kiện (ví dụ P2-5, M8.7).
 - Mỗi nước 1 đến 2 câu, tối đa khoảng 35 chữ, là câu nói tự nhiên để đọc to: không markdown, không gạch đầu dòng, không emoji, không viết điểm số dạng "+0,3" mà nói thành lời (ví dụ "Đỏ hơi ưu thế", "Đen hơn hẳn").
-- Nước bị máy đánh giá là chưa chính xác, sai lầm hay sai lầm nghiêm trọng: nói vì sao (dựa vào điểm trước và sau, quân bị mất, đòn đe dọa) và nêu nước tốt hơn máy chọn.
+- Nước bị máy đánh giá là chưa chính xác, sai lầm hay sai lầm nghiêm trọng: nói vì sao và nêu nước tốt hơn máy chọn. Lý do lấy theo thứ tự ưu tiên:
+  1. "quan_bi_treo_sau_nuoc" và "nuoc_dap_tot_nhat_cua_doi_phuong" / "an_quan_trong_dien_bien" / "can_bang_vat_chat_sau_dien_bien": đòn trừng phạt cụ thể (mất quân, bị chiếu bí). Nếu có mất quân thì đây là lý do chính.
+  2. "so_sanh_vi_tri_voi_nuoc_may_chon": số đo vị trí mà nước đã đi kém hơn nước máy chọn (quân kiểm soát ít ô hơn, Mã bị cản chân, Xe bị quân mình chặn, quân chậm ra trận…). Dùng khi không mất quân: diễn giải thành nguyên tắc chơi cờ, nói kiểu "thường thì…", không tuyệt đối hóa.
+  3. Nếu không có dữ kiện nào rõ ràng, chỉ nói máy đánh giá nước khác tốt hơn, không tự nghĩ ra lý do.
+- "dien_bien_sau_nuoc_da_di" là các nước máy dự đoán sẽ xảy ra sau nước đã đi; "de_doa_moi" là quân đối phương mà nước đi mới đe dọa ăn được.
+- Không nhắc số đo khô khan (ví dụ "kiểm soát 2 ô") trừ khi giúp người nghe hiểu; nói thành ý nghĩa ("Mã ra biên nên ít đường đi").
 - Nước tốt nhất hoặc nước tốt: nói ngắn ý đồ của nước đó; không cần khen mọi nước.
 - Nếu có lời thoại người dùng đã viết cho nước đó, giữ ý và phong cách của họ, chỉ làm rõ và tự nhiên hơn.
 - Nếu có tài liệu tham khảo của người dùng, dùng thuật ngữ và bài học trong đó khi thật sự liên quan.
 - Phần intro: 1 đến 2 câu mở đầu giới thiệu ván cờ hoặc chủ đề bài giảng.
-Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu "." là tiến, "/" là thoái, "-" là bình.`;
+Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu "." là tiến, "/" là thoái, "-" là bình.
+Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4, Sĩ/Tượng 2, Tốt 1, Tốt qua sông 2 (tính bằng số Tốt).`;
   const SCHEMA = {
     type: 'object',
     properties: {
@@ -75,7 +81,8 @@ Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu
         may_chon: bestPv[0] || null, dien_bien_may_chon: bestPv.join(' '),
         an_quan: cap ? `${NAME[cap.type]} ${sideName(cap.side)}` : null,
         chieu_tuong: inCheck(after, opp(p.side)), chieu_bi: !!p.mates,
-        loi_thoai_hien_co: narrationOf(lines[p.line] || '') || null
+        loi_thoai_hien_co: narrationOf(lines[p.line] || '') || null,
+        ...MoveFacts.forMove(p.B, p.side, p.m, p.playedPv, p.bestMove, p.bestPv)
       };
     });
   }
@@ -154,7 +161,11 @@ Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu
     const { parsed, facts } = result;
     const byPly = new Map(facts.map(f => [f.ply, f]));
     const allowedAll = new Set();
-    for (const p of data.plies) { allowedAll.add(p.nota); pvNotas(p.B, p.side, p.bestPv, 6).forEach(n => allowedAll.add(n)); }
+    for (const p of data.plies) {
+      allowedAll.add(p.nota);
+      pvNotas(p.B, p.side, p.bestPv, 6).forEach(n => allowedAll.add(n));
+      pvNotas(p.B, p.side, p.playedPv, 7).forEach(n => allowedAll.add(n)); // cả đòn trừng phạt sau nước đã đi
+    }
     const row = (key, head, old, text, warn) => `<li><label class="cm-pick"><input type="checkbox" data-k="${key}" ${text ? 'checked' : ''}> ${head}</label>` +
       (old ? `<p class="cm-old">Đang có: ${esc(old)}</p>` : '') +
       `<textarea rows="2" data-t="${key}">${esc(text)}</textarea>` +

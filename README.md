@@ -23,6 +23,7 @@ js/core/
   engine.js             Luật cờ tướng: đọc FEN, sinh nước hợp lệ, chiếu, ký hiệu X4.5
   ai-core.js            Máy tính cờ: tìm kiếm alpha-beta, lượng giá thế cờ (chạy trong Web Worker)
   pgn.js                Đọc / ghi PGN (ICCS, ký hiệu Việt, WXF, ký hiệu Trung Quốc)
+  move-facts.js         Dữ kiện "vì sao" của một nước: đòn trừng phạt, quân treo, so sánh vị trí
   timeline.js           Biến kịch bản thành dòng thời gian: camera, hiệu ứng, âm thanh
 js/render/
   camera.js             Canvas, phép chiếu 3D, chuyển động camera
@@ -61,6 +62,12 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 - **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
 - **Biểu đồ diễn biến**: sau khi kiểm duyệt, biểu đồ cho thấy thế cờ nghiêng về bên nào qua từng nước; chấm màu là nước đáng xem lại. Rê chuột để xem điểm, bấm để xem thế cờ trên bàn.
 - **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Cần mạng và khóa API Anthropic (tạo ở console.anthropic.com, tính phí theo lượng chữ); khóa chỉ gửi tới api.anthropic.com và chỉ được lưu trong trình duyệt khi bạn chọn “Nhớ khóa”.
+- **Lý do cụ thể cho nước sai**: khi kiểm duyệt, trang tự đo dữ kiện "vì sao" cho từng nước, rồi dùng cho nút “Chèn nhận xét của máy” (không cần mạng) và gửi kèm cho Claude:
+  - *Đòn trừng phạt*: đối phương đáp thế nào sau nước đó, ăn quân gì, cán cân vật chất ra sao.
+  - *Quân bị treo*: quân vừa bị tấn công mà không có quân bảo vệ.
+  - *So sánh vị trí với nước máy chọn*: quân vừa đi kiểm soát ít ô hơn, Mã bị cản chân, Xe bị quân mình chặn đường tiến, quân chậm ra trận… Chỉ giữ những số đo cho thấy nước đã đi kém hơn, cùng chiều với đánh giá của máy cờ.
+
+  Số đo luôn đúng theo luật cờ, nhưng chọn số đo nào làm lý do là suy luận: với lỗi vị trí tinh tế, lý do thật có thể sâu hơn. Dùng Pikafish thì lý do đáng tin hơn máy có sẵn.
 - **Nhập / xuất PGN**: dán hoặc mở file `.pgn`; mọi nước được kiểm tra đúng luật trước khi thành kịch bản. Xuất kịch bản ra PGN dạng tọa độ ICCS.
 
 Độ mạnh chỉnh bằng ô “Nhanh / Vừa / Kỹ” (thời gian suy nghĩ mỗi thế cờ).
