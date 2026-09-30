@@ -115,15 +115,12 @@
             <h3 id="cmTitle">Lời thoại bằng Claude</h3>
             <button class="btn sm" id="cmClose" type="button">Đóng</button>
           </div>
-          <p class="hint">Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản. Cần mạng và khóa API của Anthropic; mỗi lần viết tính phí theo lượng chữ.</p>
-          <div class="field">
-            <label for="cmKey">Khóa API Anthropic</label>
-            <input type="password" id="cmKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
-            <label class="chk"><input type="checkbox" id="cmRemember"> Nhớ khóa trên máy này (chỉ lưu trong trình duyệt, không gửi đi đâu ngoài Anthropic)</label>
+          <p class="hint">Claude viết lời thoại cho từng nước dựa trên kết quả kiểm duyệt của máy cờ. Bạn sửa và chọn dòng muốn dùng rồi mới chèn vào kịch bản.</p>
+          <div class="seg" role="group" aria-label="Cách dùng Claude">
+            <button id="cmModeChat" type="button" aria-pressed="true">Gói Claude (sao chép – dán)</button>
+            <button id="cmModeApi" type="button" aria-pressed="false">Khóa API</button>
           </div>
           <div class="row2">
-            <div class="field"><label for="cmModel">Model</label>
-              <select id="cmModel"><option value="claude-opus-5-5">Claude Opus 5.5 (mặc định)</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5 (rẻ hơn)</option></select></div>
             <div class="field"><label for="cmStyle">Giọng văn</label>
               <select id="cmStyle"><option value="lesson">Giảng bài</option><option value="match">Bình luận trận đấu</option><option value="short">Ngắn gọn</option></select></div>
           </div>
@@ -131,9 +128,30 @@
             <label for="cmNotes">Tài liệu tham khảo (tùy chọn)</label>
             <textarea id="cmNotes" rows="3" placeholder="Dán đoạn lý thuyết liên quan, ví dụ ý chính của bài Thuận pháo, để Claude dùng đúng thuật ngữ."></textarea>
           </div>
-          <div class="actions">
-            <button class="btn primary" id="cmGo" type="button">Viết lời thoại</button>
-            <button class="btn" id="cmStop" type="button" hidden>Dừng</button>
+          <div id="cmChatTools">
+            <p class="hint">Dùng gói tháng Claude (Pro, Max…) của bạn qua claude.ai, không cần khóa API và không tốn thêm phí.</p>
+            <ol class="cm-steps">
+              <li><button class="btn primary" id="cmCopy" type="button">Sao chép yêu cầu</button> <span class="ok" id="cmCopyInfo" role="status"></span></li>
+              <li><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener">Mở claude.ai</a> dán vào ô chat (Ctrl+V) rồi gửi.</li>
+              <li>Chờ Claude trả lời xong, bấm nút sao chép dưới câu trả lời, rồi dán vào đây:
+                <textarea id="cmPaste" rows="4" spellcheck="false" placeholder='Câu trả lời của Claude, dạng {"intro": "…", "lines": [...]}'></textarea>
+                <button class="btn primary" id="cmRead" type="button">Đọc kết quả</button></li>
+            </ol>
+            <details class="cm-prompt"><summary>Xem nội dung yêu cầu</summary><textarea id="cmPrompt" rows="6" readonly spellcheck="false" aria-label="Nội dung yêu cầu gửi Claude"></textarea></details>
+          </div>
+          <div id="cmApiTools" hidden>
+            <p class="hint">Gọi thẳng Claude từ trang. Khóa API mua riêng ở console.anthropic.com (tính phí theo lượng chữ, khác với gói tháng).</p>
+            <div class="field">
+              <label for="cmKey">Khóa API Anthropic</label>
+              <input type="password" id="cmKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…">
+              <label class="chk"><input type="checkbox" id="cmRemember"> Nhớ khóa trên máy này (chỉ lưu trong trình duyệt, không gửi đi đâu ngoài Anthropic)</label>
+            </div>
+            <div class="field"><label for="cmModel">Model</label>
+              <select id="cmModel"><option value="claude-opus-5-5">Claude Opus 5.5 (mặc định)</option><option value="claude-sonnet-5-5">Claude Sonnet 5.5 (rẻ hơn)</option></select></div>
+            <div class="actions">
+              <button class="btn primary" id="cmGo" type="button">Viết lời thoại</button>
+              <button class="btn" id="cmStop" type="button" hidden>Dừng</button>
+            </div>
           </div>
           <p class="ai-status" id="cmStatus" role="status" aria-live="polite"></p>
           <div id="cmOut"></div>

@@ -44,7 +44,7 @@ js/app/
   my-presets.js         Mẫu của tôi: lưu / xóa / tải xuống / mở danh sách mẫu (lưu trong trình duyệt)
   ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
   pikafish.js           Cầu nối tới máy Pikafish (Web Worker, UCI)
-  ai-commentary.js      Lời thoại bằng Claude: gửi dữ kiện máy cờ, duyệt và chèn lời thoại
+  ai-commentary.js      Lời thoại bằng Claude (gói claude.ai hoặc khóa API): gửi dữ kiện, duyệt, chèn
 engine/pikafish.js      Pikafish đơn luồng (WebAssembly, tạo bằng tools/pikafish/build.sh)
 engine/pikafish-mt.js   Pikafish đa luồng (cần mở trang qua tools/serve.py)
 vendor/anthropic-sdk.js Thư viện chính thức @anthropic-ai/sdk đóng gói cho trình duyệt (tools/vendor-anthropic-sdk.sh)
@@ -61,7 +61,9 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 - **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
 - **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
 - **Biểu đồ diễn biến**: sau khi kiểm duyệt, biểu đồ cho thấy thế cờ nghiêng về bên nào qua từng nước; chấm màu là nước đáng xem lại. Rê chuột để xem điểm, bấm để xem thế cờ trên bàn.
-- **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Cần mạng và khóa API Anthropic (tạo ở console.anthropic.com, tính phí theo lượng chữ); khóa chỉ gửi tới api.anthropic.com và chỉ được lưu trong trình duyệt khi bạn chọn “Nhớ khóa”.
+- **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Có hai cách dùng:
+  - **Gói Claude (sao chép – dán)**, mặc định: dùng gói tháng Claude (Pro, Max…) qua claude.ai, không cần khóa API, không tốn thêm phí. Bấm “Sao chép yêu cầu”, mở claude.ai, dán vào ô chat và gửi; khi Claude trả lời xong, sao chép câu trả lời, dán vào ô trong trang rồi bấm “Đọc kết quả”. Trang tự bỏ phần chữ thừa và khung ``` quanh khối JSON, bỏ các dòng không khớp nước nào, và báo nếu câu trả lời bị cụt.
+  - **Khóa API**: gọi thẳng Claude từ trang. Cần khóa API Anthropic (tạo ở console.anthropic.com, tính phí theo lượng chữ, tách riêng với gói tháng); khóa chỉ gửi tới api.anthropic.com và chỉ được lưu trong trình duyệt khi bạn chọn “Nhớ khóa”.
 - **Lý do cụ thể cho nước sai**: khi kiểm duyệt, trang tự đo dữ kiện "vì sao" cho từng nước, rồi dùng cho nút “Chèn nhận xét của máy” (không cần mạng) và gửi kèm cho Claude:
   - *Đòn trừng phạt*: đối phương đáp thế nào sau nước đó, ăn quân gì, cán cân vật chất ra sao.
   - *Quân bị treo*: quân vừa bị tấn công mà không có quân bảo vệ.

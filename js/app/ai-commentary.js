@@ -156,6 +156,57 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
     } finally { stream = null; goBtn.disabled = false; stopBtn.hidden = true; }
   }
 
+  // ---------- dùng gói Claude qua claude.ai (sao chép – dán) ----------
+  const chatTools = $('cmChatTools'), apiTools = $('cmApiTools'), pasteIn = $('cmPaste'), promptOut = $('cmPrompt'), copyInfo = $('cmCopyInfo');
+  const MODE_STORE = 'coTuongClaudeMode';
+  let chatFacts = null;
+  function setMode(m) {
+    chatTools.hidden = m !== 'chat'; apiTools.hidden = m !== 'api';
+    $('cmModeChat').setAttribute('aria-pressed', String(m === 'chat')); $('cmModeApi').setAttribute('aria-pressed', String(m === 'api'));
+    try { localStorage.setItem(MODE_STORE, m); } catch (e) { /* bỏ qua */ }
+  }
+  let savedMode = null; try { savedMode = localStorage.getItem(MODE_STORE); } catch (e) { /* bỏ qua */ }
+  setMode(savedMode || (keyIn.value ? 'api' : 'chat'));
+  $('cmModeChat').onclick = () => setMode('chat');
+  $('cmModeApi').onclick = () => setMode('api');
+  const fresh = () => data && data.snapshot === fenIn.value + '\n' + scriptIn.value;
+  function chatPrompt(facts) {
+    return `${SYSTEM}\n\n${buildPrompt(facts)}\n\nChỉ trả lời bằng đúng một khối JSON, không viết thêm gì khác, theo dạng:\n` +
+      '{"intro": "lời mở đầu", "lines": [{"ply": <giữ nguyên số "ply" trong dữ kiện>, "text": "lời thoại cho nước đó"}]}';
+  }
+  async function copyPrompt() {
+    if (!fresh()) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy bấm “Kiểm duyệt kịch bản” lại trước.', true); return; }
+    chatFacts = buildFacts();
+    const text = chatPrompt(chatFacts);
+    promptOut.value = text;
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+      // Trình duyệt chặn clipboard API (ví dụ khi mở file trực tiếp): chọn chữ rồi sao chép kiểu cũ.
+      const det = promptOut.closest('details'); det.open = true; promptOut.focus(); promptOut.select();
+      try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    }
+    copyInfo.textContent = ok ? `Đã sao chép yêu cầu cho ${chatFacts.length} nước (${text.length.toLocaleString('vi-VN')} ký tự).`
+      : 'Chưa sao chép tự động được: hãy mở “Xem nội dung yêu cầu”, chọn hết (Ctrl+A) rồi sao chép (Ctrl+C).';
+    say('Bước tiếp: dán vào claude.ai, rồi dán câu trả lời của Claude vào ô bên dưới.');
+  }
+  // Đọc câu trả lời dán vào: bỏ khung ``` nếu có, lấy phần từ { đầu tiên tới } cuối cùng.
+  function readPasted() {
+    if (!fresh()) { say('Kịch bản đã thay đổi sau khi kiểm duyệt. Hãy kiểm duyệt lại rồi sao chép yêu cầu mới.', true); return; }
+    const raw = pasteIn.value, a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+    if (a < 0) { say('Không thấy khối JSON trong phần dán vào. Hãy sao chép toàn bộ câu trả lời của Claude.', true); return; }
+    if (b <= a) { say('Câu trả lời bị cụt (thiếu phần cuối). Hãy bấm “Continue” trên claude.ai hoặc nhờ Claude “trả lại đúng khối JSON”, rồi dán lại.', true); return; }
+    let parsed;
+    try { parsed = JSON.parse(raw.slice(a, b + 1)); } catch (e) { say('Câu trả lời không phải JSON hợp lệ (có thể bị thiếu một đoạn). Hãy nhờ Claude “trả lại đúng khối JSON” rồi dán lại.', true); return; }
+    const facts = chatFacts || buildFacts(), plies = new Set(facts.map(f => f.ply));
+    const lines = Array.isArray(parsed.lines) ? parsed.lines.filter(l => l && Number.isInteger(+l.ply) && plies.has(+l.ply) && typeof l.text === 'string').map(l => ({ ply: +l.ply, text: l.text })) : [];
+    if (!lines.length && !parsed.intro) { say('Câu trả lời không có lời thoại nào khớp với các nước đã kiểm duyệt.', true); return; }
+    result = { parsed: { intro: typeof parsed.intro === 'string' ? parsed.intro : '', lines }, facts };
+    render();
+    say(`Đã đọc ${lines.length}/${facts.length} dòng lời thoại. Sửa nếu cần rồi bấm “Chèn vào kịch bản”.`);
+  }
+  $('cmCopy').onclick = copyPrompt;
+  $('cmRead').onclick = readPasted;
+
   // ---------- duyệt và chèn ----------
   function render() {
     const { parsed, facts } = result;
@@ -199,10 +250,10 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
 
   // ai-panel.js gọi khi người dùng bấm "Viết lời thoại bằng Claude" trong kết quả kiểm duyệt.
   window.openCommentary = review => {
-    data = review; box.hidden = false; out.innerHTML = ''; result = null;
-    say(`${review.plies.length} nước đã kiểm duyệt sẵn sàng. Bấm “Viết lời thoại”.`);
+    data = review; box.hidden = false; out.innerHTML = ''; result = null; chatFacts = null; pasteIn.value = ''; promptOut.value = ''; copyInfo.textContent = '';
+    say(`${review.plies.length} nước đã kiểm duyệt sẵn sàng.`);
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    (keyIn.value ? goBtn : keyIn).focus();
+    (!apiTools.hidden ? (keyIn.value ? goBtn : keyIn) : $('cmCopy')).focus();
   };
   goBtn.onclick = run;
   stopBtn.onclick = () => { if (stream) stream.abort(); };
