@@ -7,6 +7,7 @@ function woodGrain(c, x0, x1, z0, z1, n, dark, light, s0, seed) {
     c.strokeStyle = i % 3 === 0 ? dark : light; c.lineWidth = Math.max(1, s0 * (i % 3 === 0 ? 0.03 : 0.02)); c.stroke();
   }
 }
+let RIVER_HIDE = { x: null, a: 0 };
 function drawBoard(c) {
   const s0 = scaleAt(0, 0, 0);
   shadowFill(c, [P(-BX - .2, -BT, -BZ), P(BX + .35, -BT, -BZ), P(BX + .6, -BT, BZ + .55), P(-BX - .15, -BT, BZ + .55)], s0 * 0.6, 0.9);
@@ -58,6 +59,7 @@ function drawBoard(c) {
   // river text, carved
   c.save(); c.font = `900 60px ${CJK}`; c.textAlign = 'center'; c.textBaseline = 'middle';
   for (const [x, txt] of [[-2, '楚　河'], [2, '漢　界']]) {
+    c.globalAlpha = RIVER_HIDE.x === x ? 1 - RIVER_HIDE.a : 1; // nhường chỗ cho chữ 將死
     planeT(c, x, y, 0); c.fillStyle = 'rgba(255,236,200,.45)'; c.fillText(txt, 2, 7); c.fillStyle = 'rgba(70,32,10,.8)'; c.fillText(txt, 0, 4);
   }
   c.restore();

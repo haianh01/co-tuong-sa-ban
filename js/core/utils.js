@@ -8,4 +8,4 @@ const win = (t, a, b, f = 0.35) => smooth(a, a + f, t) * (1 - smooth(b - f, b, t
 const rand = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 const UI = '"Be Vietnam Pro", system-ui, sans-serif';
 const CJK = '"Noto Serif TC", "Songti TC", "STSong", "SimSun", serif';
-const GOLD = '#ffc24f', RED = '#ff4433', GREEN = '#5fe08a', AMBER = '#ffb13b';
+const GOLD = '#ffc24f', RED = '#ff4433', GREEN = '#5fe08a', AMBER = '#ffb13b', BLUE = '#4fb0ff';
