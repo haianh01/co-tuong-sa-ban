@@ -24,6 +24,7 @@ js/core/
   ai-core.js            Máy tính cờ: tìm kiếm alpha-beta, lượng giá thế cờ (chạy trong Web Worker)
   pgn.js                Đọc / ghi PGN (ICCS, ký hiệu Việt, WXF, ký hiệu Trung Quốc)
   move-facts.js         Dữ kiện "vì sao" của một nước: đòn trừng phạt, quân treo, so sánh vị trí
+  mate-net.js           Lưới chiếu bí: quân chiếu, ô Tướng định chạy bị ai khống chế, quân tưởng đỡ được
   timeline.js           Biến kịch bản thành dòng thời gian: camera, hiệu ứng, âm thanh
 js/render/
   camera.js             Canvas, phép chiếu 3D, chuyển động camera
@@ -31,7 +32,7 @@ js/render/
   board.js              Bàn cờ gỗ trắc
   pieces.js             Quân cờ (3 chất liệu), rung quân, chén trà
   overlays.js           Vệt đường đi, vòng chân Mã, nhãn, hạt bụi va chạm
-  scene.js              Ghép cảnh, làm mờ khi chiếu bí, phụ đề, thẻ tiêu đề
+  scene.js              Ghép cảnh, lưới chiếu bí, phụ đề, thẻ tiêu đề
 js/audio/
   audio-engine.js       Bộ tổng hợp âm thanh, reverb, bus ghi âm
   sound-packs.js        Các bộ âm thanh (thêm bộ mới ở đây)
@@ -52,6 +53,16 @@ tools/build.py          Gộp tất cả thành một file dist/co-tuong-sa-ban.
 tools/serve.py          Máy chủ cục bộ kèm header COOP/COEP để Pikafish chạy đa luồng
 tools/pikafish/         Vá và biên dịch Pikafish sang WebAssembly
 ```
+
+## Hiệu ứng chiếu bí
+
+Khi một nước trong kịch bản chiếu bí, video tự giải thích vì sao Tướng hết đường (máy tính theo đúng luật, gồm cả Pháo có ngòi mới và hai Tướng lộ mặt):
+
+1. Quân vừa đi có vầng sáng xanh; các quân không liên quan tối đi.
+2. Tia đỏ chạy từ quân chiếu tới Tướng (Pháo đi xuyên ngòi, Mã đi qua chân Mã); ô Tướng đỏ lên.
+3. Bóng Tướng thử lần lượt từng ô chạy trong cung: ô bị khống chế có tia cam từ quân khống chế và bị gạch X; ô có quân nhà đứng chuyển màu xám.
+4. Tối đa hai quân tưởng đỡ được (ăn quân chiếu, chặn giữa đường, dời ngòi Pháo) thử đi và bị gạch X. Lý do để bạn tự giải thích trong lời thoại.
+5. Chữ 將死 (chiếu bí) hiện nhỏ trên sông, chỗ không có quân; hết nước đi thì là 困斃.
 
 ## Trợ lý AI
 

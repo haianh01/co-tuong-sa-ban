@@ -1,4 +1,5 @@
 'use strict';
+const GROUND = { ring: 1, ringAt: 1, path: 1, cell: 1, mate: 1 }; // lớp vẽ dưới quân cờ; các lớp khác vẽ đè lên
 function drawScene(c, t) {
   c.setTransform(1, 0, 0, 1, 0, 0);
   drawWall(c, t); drawTable(c);
@@ -14,22 +15,29 @@ function drawScene(c, t) {
   if (cupBehind) drawCup(c);
   drawItems(pre);
   drawSpot(c);
+  const mk = TL.ov.find(o => o.k === 'mate' && o.x);
+  RIVER_HIDE = mk ? { x: mk.x, a: win(t, mk.a, mk.b, .3) } : { x: null, a: 0 };
   drawBoard(c);
   const byId = {}; items.forEach(it => byId[it.pc.id] = it.pos);
   for (const o of TL.ov) {
-    if (o.elev || o.k === 'label' || o.k === 'mate' || o.k === 'burst') continue;
+    if (o.elev || !(o.k in GROUND)) continue;
     const a = win(t, o.a, o.b); if (a <= 0.01) continue;
     if (o.k === 'ring') { const p = byId[o.id]; drawRing(c, p.x, p.z, 0.56 + (o.pulse ? 0.04 * Math.sin(t * 9) : 0), o.color, a, onBoardXZ(p.x, p.z) ? 0.015 : -BT + 0.015); }
     else if (o.k === 'ringAt') drawRing(c, o.x, o.z, o.r, o.color, a);
-    else if (o.k === 'path') glowPath(c, o.pts, { color: o.color, alpha: a, w: .06, prog: smooth(o.p0, o.p1, t), dash: o.dash, arrow: o.arrow }, t);
+    else if (o.k === 'path') glowPath(c, o.pts, { color: o.color, alpha: a, w: o.w || .06, prog: smooth(o.p0, o.p1, t), dash: o.dash, arrow: o.arrow }, t);
+    else if (o.k === 'mate') drawRiverMark(c, o.text, o.x, a, smooth(o.a, o.a + .45, t));
+    else if (o.k === 'cell') drawCell(c, o.x, o.z, o.color, a * (o.pulse ? 0.8 + 0.2 * Math.sin(t * 7) : 1), o.strong);
   }
   drawItems(post);
   if (!cupBehind) drawCup(c);
+  for (const o of TL.ov) if (o.k === 'dim') drawDim(c, o, byId, t);
   for (const o of TL.ov) {
+    if (o.k === 'ghost') { const it = items.find(i => i.pc.id === o.id); if (it) drawGhost(c, it.pc, o, t); continue; }
+    if (o.k === 'aura') { if (byId[o.id]) drawAura(c, byId[o.id], win(t, o.a, o.b), t); continue; }
     if (o.k === 'burst') { burst(c, o.x, o.z, o.t0, t); continue; }
     if (o.k === 'x') { drawX(c, o.x, o.z, win(t, o.a, o.b)); continue; }
     if (!o.elev) continue;
-    const a = win(t, o.a, o.b); if (a > 0.01) glowPath(c, o.pts, { color: o.color, alpha: a, w: .06, prog: smooth(o.p0, o.p1, t), arrow: o.arrow }, t);
+    const a = win(t, o.a, o.b); if (a > 0.01) glowPath(c, o.pts, { color: o.color, alpha: a, w: o.w || .06, dash: o.dash, prog: smooth(o.p0, o.p1, t), arrow: o.arrow }, t);
   }
   drawDust(c, t);
 }
@@ -63,15 +71,6 @@ function drawUI(c, t) {
     c.fillStyle = h.side === 'r' ? '#ff8a72' : '#eee6d8'; c.fillText(h.text, x + fs2 * .6, y + fs2 * .8);
   });
   c.restore();
-  // mate
-  for (const o of TL.ov) if (o.k === 'mate') {
-    const a = win(t, o.a, o.b, .3); if (a <= .01) continue;
-    const sc_ = lerp(1.35, 1, smooth(o.a, o.a + .45, t));
-    c.save(); c.globalAlpha = a; c.translate(W / 2, H / 2); c.scale(sc_, sc_);
-    c.font = `800 ${U * .17}px ${UI}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.shadowColor = 'rgba(255,60,40,.7)'; c.shadowBlur = U * .05; c.fillStyle = '#ff4c37'; c.fillText(o.text, 0, 0);
-    c.shadowBlur = 0; c.fillStyle = 'rgba(255,220,200,.25)'; c.fillText(o.text, 0, -U * .004); c.restore();
-  }
   // title card
   const ta = 1 - smooth(2.8, 3.6, t);
   if (ta > .01) {
