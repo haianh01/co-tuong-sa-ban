@@ -13,6 +13,11 @@ python3 tools/serve.py
 ```
 rồi vào http://localhost:8000.
 
+## Game chiến thuật: Bạch Đằng 938
+
+Prototype game chiến thuật tái hiện trận Bạch Đằng năm 938: cắm cọc ngầm, nhử giặc khi nước lớn, phản công khi nước rút.
+Mở `games/bach-dang/index.html`. Xem [games/bach-dang/README.md](games/bach-dang/README.md).
+
 ## Cấu trúc
 
 ```

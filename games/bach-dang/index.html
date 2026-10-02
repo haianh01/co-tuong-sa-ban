@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bạch Đằng 938 – Sa bàn chiến trường</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1>Bạch Đằng <span>938</span></h1>
+    <div class="clock"><span id="phase">Bày trận</span><b id="clock">0:00</b></div>
+    <div class="tide" title="Mực thủy triều theo thời gian. Vạch cam: mức cọc chạm đáy thuyền.">
+      <canvas id="tideCv" width="300" height="56" aria-label="Biểu đồ thủy triều"></canvas>
+      <span id="tideTxt"></span>
+    </div>
+    <div class="ctl">
+      <button class="btn primary" id="startBtn">Bắt đầu trận</button>
+      <button class="btn" id="pauseBtn" hidden aria-label="Tạm dừng (phím cách)">Tạm dừng</button>
+      <div class="seg" id="speedSeg" hidden role="group" aria-label="Tốc độ">
+        <button data-s="1" aria-pressed="true">1×</button><button data-s="2" aria-pressed="false">2×</button><button data-s="4" aria-pressed="false">4×</button>
+      </div>
+      <button class="btn" id="helpBtn" aria-label="Hướng dẫn">?</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Sa bàn sông Bạch Đằng"></canvas>
+      <div class="banner" id="banner" hidden></div>
+    </div>
+    <aside class="side">
+      <section class="card" id="selCard">
+        <h2>Quân đang chọn</h2>
+        <div id="selInfo" class="sel-empty">Bấm vào quân ta để chọn, kéo chuột để chọn nhiều. Chuột phải để ra lệnh.</div>
+        <div class="actions" id="selActions" hidden>
+          <button class="btn sm" id="holdBtn">Giữ im lặng (H)</button>
+          <button class="btn sm" id="stopBtn">Dừng (S)</button>
+        </div>
+      </section>
+      <section class="card" id="planCard">
+        <h2>Bày trận</h2>
+        <p>Cọc đã cắm: <b id="stakeCount">0</b> / <span id="stakeMax"></span></p>
+        <p class="muted">Bấm (hoặc kéo) trên ô sông sâu trong vùng viền vàng để cắm hay nhổ cọc.</p>
+        <button class="btn sm" id="clearStakes">Nhổ hết cọc</button>
+      </section>
+      <section class="card">
+        <h2>Mục tiêu</h2>
+        <ul class="goals" id="goals"></ul>
+      </section>
+      <section class="card log-card">
+        <h2>Chiến báo</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<div class="modal" id="introModal">
+  <div class="sheet">
+    <p class="eyebrow">Màn 1 · Năm 938</p>
+    <h2>Trận Bạch Đằng</h2>
+    <div id="briefing"></div>
+    <h3>Cách chơi</h3>
+    <ul id="howto"></ul>
+    <p class="keys"><kbd>Chuột trái</kbd> chọn · <kbd>Chuột phải</kbd> đi / đánh · <kbd>Cách</kbd> tạm dừng · <kbd>H</kbd> giữ im lặng · <kbd>S</kbd> dừng · <kbd>A</kbd> chọn tất cả · <kbd>1</kbd><kbd>2</kbd><kbd>4</kbd> tốc độ</p>
+    <div class="actions">
+      <button class="btn primary" id="introGo">Vào bày trận</button>
+      <button class="btn" id="loreBtn" hidden>Bách khoa: trận Bạch Đằng</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="endModal" hidden>
+  <div class="sheet">
+    <p class="eyebrow" id="endEyebrow"></p>
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <dl class="stats" id="endStats"></dl>
+    <div id="endLore"></div>
+    <div class="actions">
+      <button class="btn primary" id="againBtn">Chơi lại</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="loreModal" hidden>
+  <div class="sheet">
+    <div id="loreBody"></div>
+    <div class="actions"><button class="btn" id="loreClose">Đóng</button></div>
+  </div>
+</div>
+
+<script src="js/core/util.js"></script>
+<script src="js/data/units.js"></script>
+<script src="js/core/terrain.js"></script>
+<script src="js/core/world.js"></script>
+<script src="js/core/ai.js"></script>
+<script src="js/core/events.js"></script>
+<script src="js/data/battles/bach-dang-938.js"></script>
+<script src="js/render/render.js"></script>
+<script src="js/app/hud.js"></script>
+<script src="js/app/input.js"></script>
+<script src="js/app/main.js"></script>
+</body>
+</html>
