@@ -161,3 +161,31 @@ $('recCancel').onclick = () => {
   recCancelled = true; playing = false;
   if (recDone) { const f = recDone; recDone = null; f(); }
 };
+
+// ---------- phụ đề .srt (cho giọng đọc tự động của CapCut, YouTube…) ----------
+// Ký hiệu nước đi trong câu thoại đổi sang cách đọc ("P5.4" → "Pháo 5 tiến 4") để máy đọc không đọc thành
+// "P năm chấm bốn". Mỗi câu thoại của một nước được mở đầu bằng tên nước (trừ khi câu đã nhắc tới nước đó).
+const SPOKEN_PIECE = { Tg: 'Tướng', X: 'Xe', M: 'Mã', T: 'Tượng', S: 'Sĩ', P: 'Pháo', B: 'Tốt' };
+const SPOKEN_DIR = { '.': 'tiến', '/': 'thoái', '-': 'bình' }, SPOKEN_POS = { t: 'trước', g: 'giữa', s: 'sau' };
+const NOTA_RE = /(^|[^\p{L}\p{N}])(Tg|[XMTSPB])([1-9tgs])([.\/\-])([1-9])(?![\p{L}\p{N}])/gu;
+const spokenMove = (pc, f, d, n) => `${SPOKEN_PIECE[pc]} ${SPOKEN_POS[f] || f} ${SPOKEN_DIR[d]} ${n}`;
+const spoken = text => text.replace(NOTA_RE, (m, pre, pc, f, d, n) => pre + spokenMove(pc, f, d, n));
+function srtText() {
+  const ts = x => { const ms = Math.max(0, Math.round(x * 1000)), h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, sec = Math.floor(ms / 1000) % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')},${String(ms % 1000).padStart(3, '0')}`; };
+  const caps = TL.caps.filter(c => c.text && c.text.trim()).slice().sort((a, b) => a.a - b.a);
+  return caps.map((c, i) => {
+    const end = i + 1 < caps.length ? Math.min(c.b, caps[i + 1].a - 0.05) : c.b;
+    const nota = (c.chip || '').split(' ').pop().replace(/[+#]+$/, '');
+    let line = spoken(c.text.trim());
+    if (nota && !c.text.includes(nota)) { NOTA_RE.lastIndex = 0; const m = NOTA_RE.exec(' ' + nota); if (m) line = `${spokenMove(m[2], m[3], m[4], m[5])}. ${line}`; }
+    NOTA_RE.lastIndex = 0;
+    return `${i + 1}\n${ts(c.a)} --> ${ts(Math.max(c.a + 0.5, end))}\n${line}\n`;
+  }).join('\n');
+}
+$('srtBtn').onclick = async () => {
+  if (!TL.caps.length) { showErrors(['Kịch bản chưa có lời thoại nào để xuất phụ đề.']); return; }
+  const blob = new Blob(['\ufeff' + srtText()], { type: 'application/x-subrip' });
+  const fname = await saveVideo(blob, 'srt');
+  info.textContent = `Đã xuất ${fname}: ${TL.caps.length} câu thoại, khớp thời gian với video.`;
+};

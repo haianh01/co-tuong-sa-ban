@@ -38,7 +38,7 @@ js/audio/
   sound-packs.js        Các bộ âm thanh (thêm bộ mới ở đây)
 js/app/
   controls.js           Nút phát, tua, chương, vòng lặp khung hình
-  export.js             Xuất video MP4: dựng từng khung + WebCodecs (nhanh), dự phòng quay thời gian thực
+  export.js             Xuất video MP4 (dựng từng khung + WebCodecs, dự phòng quay thời gian thực); xuất phụ đề .srt
   presets.js            Thế cờ và kịch bản mẫu (thêm bài giảng ở đây)
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
@@ -131,6 +131,19 @@ Bấm “Xuất video” (cạnh nút phát). Trên Chrome / Edge, trang dựng 
 - Tiếng động được dựng riêng một lần (OfflineAudioContext) nên khớp từng khung hình. Đang tắt tiếng thì video không có âm thanh.
 
 Trình duyệt không có WebCodecs thì trang quay theo thời gian thực như cũ (MediaRecorder): tự tạm dừng khi chuyển tab, cũng có nút “Hủy”.
+
+## Giọng đọc: xuất phụ đề .srt cho CapCut
+
+Bấm “Phụ đề .srt” (cạnh “Xuất video”) để tải file phụ đề, mỗi câu thoại khớp đúng thời điểm nó hiện trong video. Ký hiệu nước đi được đổi sang cách đọc (“P5.4” thành “Pháo 5 tiến 4”, “Xt.3” thành “Xe trước tiến 3”), và câu thoại của mỗi nước được mở đầu bằng tên nước nếu câu chưa nhắc tới.
+
+Dùng với CapCut (máy tính hoặc điện thoại):
+
+1. Thêm video vừa xuất vào CapCut.
+2. Chọn Văn bản → Nhập phụ đề / Phụ đề cục bộ, chọn file `.srt`.
+3. Chọn tất cả phụ đề → “Chuyển văn bản thành giọng nói” (Text to speech), chọn một giọng tiếng Việt.
+4. Nếu chỉ muốn nghe giọng mà không hiện chữ, ẩn hoặc xóa lớp phụ đề sau khi đã tạo giọng.
+
+Giọng đọc dài hơn khoảng thời gian của câu thì chọn “Nhịp dựng: Chậm, kỹ” rồi dựng và xuất lại để mỗi câu có nhiều thời gian hơn.
 
 ## Tự lưu bản nháp
 
