@@ -151,6 +151,20 @@ function xqAICore(host) {
   }
   const evaluate = side => side ? -score : score;
   const repeated = () => { for (let i = ply - 2; i >= 0; i -= 2) if (hashStack[i] === h1) return true; return false; };
+  // Các thế cờ đã xảy ra trước đó trong ván (opts.history), đếm số lần. Đi về một thế đã xảy ra 2 lần
+  // (tức lặp lần thứ ba) thì tính là hòa, giống Pikafish/Stockfish; lặp ngay trong lúc tìm kiếm thì vẫn
+  // tính hòa ở lần thứ hai (repeated). Khóa = mã băm thế cờ, đã đảo lượt theo khoảng cách tới thế
+  // hiện tại để khớp với mã băm trong lúc tìm kiếm (mỗi nước đảo ZS1/ZS2 một lần).
+  let histMap = new Map();
+  function loadHistory(hist) {
+    histMap = new Map();
+    if (!hist || !hist.board || !hist.moves || !hist.moves.length) return;
+    const b = hist.board.slice(), n = hist.moves.length;
+    for (let i = 0; i < n; i++) {
+      if (n - i <= 100) { load(b); const odd = (n - i) & 1, k = (odd ? h1 ^ ZS1 : h1) + ':' + (odd ? h2 ^ ZS2 : h2); histMap.set(k, (histMap.get(k) || 0) + 1); }
+      const [f, t] = hist.moves[i]; b[t] = b[f]; b[f] = 0;
+    }
+  }
   function hasPieces(side) { const b = side ? BLACK : 0; for (let i = 0; i < 90; i++) { const p = B[i]; if (p && (p & BLACK) === b) { const t = p & 7; if (t === ROOK || t === HORSE || t === CANNON) return true; } } return false; }
   function tick() { if ((++nodes & 1023) === 0 && now() > deadline) { aborted = true; throw ABORT; } }
 
@@ -193,7 +207,7 @@ function xqAICore(host) {
   function search(side, depth, alpha, beta, allowNull) {
     tick();
     pvLen[ply] = ply;
-    if (ply > 0 && repeated()) return 0;
+    if (ply > 0 && (repeated() || (histMap.size && histMap.get(h1 + ':' + h2) >= 2))) return 0;
     if (ply >= MAX_PLY) return evaluate(side);
     const chk = inCheck(side);
     if (chk) depth++;
@@ -277,9 +291,11 @@ function xqAICore(host) {
   const dec = m => [m >> 7, m & 127];
   const same = (m, a) => (m >> 7) === a[0] && (m & 127) === a[1];
 
-  // opts: { board, side, time (ms), maxDepth, multi, only: [[từ, đến]], exclude: [[từ, đến]] }
+  // opts: { board, side, time (ms), maxDepth, multi, only: [[từ, đến]], exclude: [[từ, đến]],
+  //         history: { board, side, moves: [[từ, đến]] } = thế đầu ván và các nước đã đi tới thế hiện tại }
   function analyze(opts, progress) {
     const start = now(), total = opts.time || 1000, multi = Math.max(1, opts.multi || 1), maxDepth = opts.maxDepth || 64;
+    loadHistory(opts.history);
     load(opts.board); ply = 0; nodes = 0;
     const side = opts.side | 0;
     let all = legalMoves(side);

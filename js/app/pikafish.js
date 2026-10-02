@@ -216,7 +216,10 @@ if (self.name !== 'em-pthread') onmessage = async e => {
     // Có maxDepth: dừng khi đủ độ sâu, time chỉ là giới hạn trên (giống máy có sẵn).
     if (opts.maxDepth) go = `go depth ${opts.maxDepth} movetime ${Math.max(50, Math.round(opts.time || 1000))}`;
     if (opts.only && opts.only.length) go += ' searchmoves ' + opts.only.map(toUci).join(' ');
-    await inst.raw([`setoption name MultiPV value ${multi}`, `position fen ${fenOf(opts.board, opts.side)}`, go], line => {
+    // Có lịch sử ván thì gửi "thế đầu + các nước đã đi" để Pikafish xét luật lặp nước, chiếu dai, đuổi dai.
+    const h = opts.history, position = h && h.moves && h.moves.length
+      ? `position fen ${fenOf(h.board, h.side)} moves ${h.moves.map(toUci).join(' ')}` : `position fen ${fenOf(opts.board, opts.side)}`;
+    await inst.raw([`setoption name MultiPV value ${multi}`, position, go], line => {
       if (line.startsWith('bestmove')) { best = line.split(/\s+/)[1]; return; }
       const info = parseInfo(line); if (!info) return;
       if (info.multipv === 1 && cur.length) { prev = cur; cur = []; }

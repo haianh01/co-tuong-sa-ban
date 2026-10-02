@@ -58,6 +58,9 @@ const AIEngine = (() => {
   const MATE = 30000, WIN = MATE - 500;
   const CODE = { k: 1, a: 2, e: 3, h: 4, r: 5, c: 6, p: 7 };
   const toCodes = B => B.map(p => p ? CODE[p.type] + (p.side === 'b' ? 8 : 0) : 0);
+  // Lịch sử ván (thế đầu + các nước đã đi tới thế đang tính) để máy cờ xét luật lặp nước / chiếu dai.
+  const histOf = (B0, s0, moves) => (moves && moves.length ? { board: toCodes(B0), side: sideNum(s0), moves: moves.slice() } : null);
+  const gameHist = g => (g ? histOf(g.b0, g.s0, g.moves) : null);
   const sideNum = s => s === 'r' ? 0 : 1;
   const sideName = s => s === 'r' ? 'Đỏ' : 'Đen';
   const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
@@ -155,7 +158,7 @@ const AIEngine = (() => {
     const my = ++evalSeq, pf = AIEngine.kind() === 'pikafish';
     evalBar.classList.add('busy');
     try {
-      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: wantHints ? (pf ? 900 : 700) : (pf ? 500 : 350), multi: wantHints ? 3 : 1, split: false });
+      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: wantHints ? (pf ? 900 : 700) : (pf ? 500 : 350), multi: wantHints ? 3 : 1, split: false, history: gameHist(pos.game) });
       if (!r.lines.length) return;
       remember(B, side, r.lines[0].score, r.depth);
       if (wantHints) hintCache.set(key, r.lines);
@@ -194,7 +197,7 @@ const AIEngine = (() => {
     say(`Máy đang tính cho ${sideName(side)}…`);
     let res;
     try {
-      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3, moves: legal(B, side) }, info => {
+      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3, moves: legal(B, side), history: gameHist(pos) }, info => {
         say(`Máy đang tính cho ${sideName(side)}: độ sâu ${info.depth}, tạm chọn ${pvText(B, side, info.pv, 1)} (${scoreText(info.score, side)})`);
       });
     } catch (e) { setBusy(false); say(e.message === 'stopped' ? 'Đã dừng.' : `Lỗi khi tính: ${e.message || e}`, e.message !== 'stopped'); return; }
@@ -227,7 +230,7 @@ const AIEngine = (() => {
       if (!legal(B, side).length) { err = `Dòng ${i + 1} (“${mv}”): ván cờ đã kết thúc trước nước này.`; break; }
       let m;
       try { m = resolve(B, side, mv); } catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}.`; break; }
-      plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0 });
+      plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0, hist: histOf(B0, s0, plies.map(q => q.m)) });
       B = apply(B, m); side = opp(side);
     }
     // Đánh số theo chuẩn: mỗi số là một cặp Đỏ rồi Đen (Đen đi trước thì nước đầu là "1…", nước Đỏ sau đó là "2.").
@@ -256,13 +259,13 @@ const AIEngine = (() => {
     let stopped = false, failed = null, next = 0, count = 0;
     const lanes = AIEngine.lanes();
     async function grade(p) {
-      const board = toCodes(p.B), side = sideNum(p.side);
-      const r = await AIEngine.analyze({ board, side, time: T, split: false });
+      const board = toCodes(p.B), side = sideNum(p.side), history = p.hist;
+      const r = await AIEngine.analyze({ board, side, time: T, split: false, history });
       const best = r.lines[0];
       p.bestMove = best.move; p.best = best.score; p.bestPv = best.pv; p.depth = r.depth;
       if (same(best.move, p.m)) { p.played = best.score; p.playedPv = best.pv; }
       else {
-        const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false });
+        const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false, history });
         p.played = rp.lines.length ? rp.lines[0].score : best.score;
         p.playedPv = rp.lines.length ? rp.lines[0].pv : [p.m]; // bắt đầu bằng chính nước đã đi: phần sau là đòn đáp của đối phương
       }
@@ -271,7 +274,7 @@ const AIEngine = (() => {
       p.cls = classify(p);
       // Nước đáng xem lại: tính thêm 3 phương án tốt nhất để trả lời "sao không đi nước khác".
       if (['inacc', 'mistake', 'blunder'].includes(p.cls.key) && legal(p.B, p.side).length > 1) {
-        const ra = await AIEngine.analyze({ board, side, time: T, multi: 3, split: false });
+        const ra = await AIEngine.analyze({ board, side, time: T, multi: 3, split: false, history });
         p.alts = ra.lines.map(l => ({ move: l.move, score: l.score, pv: l.pv }));
       }
       remember(p.B, p.side, p.best, (p.depth || 0) + 100);

@@ -22,16 +22,16 @@
   // Replays the script over the FEN (at most `limit` moves) and returns the resulting position.
   function replay(limit = Infinity) {
     const { B, side } = parseFEN(fenIn.value);
-    let b = B, s = side, n = 0, err = '', errLine = -1, last = null;
+    let b = B, s = side, n = 0, err = '', errLine = -1, last = null; const moves = [];
     const lines = scriptIn.value.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!isMoveLine(lines[i])) continue;
       if (n >= limit) break;
       const mv = lines[i].split('|')[0].trim();
-      try { const m = resolve(b, s, mv); last = m; b = apply(b, m); s = opp(s); n++; }
+      try { const m = resolve(b, s, mv); last = m; moves.push(m); b = apply(b, m); s = opp(s); n++; }
       catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}`; errLine = i; break; }
     }
-    return { b, s, n, err, errLine, last };
+    return { b, s, n, err, errLine, last, b0: B, s0: side, moves }; // b0, s0, moves: lịch sử ván để máy cờ xét luật lặp nước
   }
   const iccs = m => { const f = i => String.fromCharCode(97 + i % 9) + (9 - ((i / 9) | 0)); return f(m[0]) + f(m[1]); };
   function readSetup() {
@@ -67,7 +67,7 @@
     return `<g transform="translate(${x},${y})" ${extra}><circle r="45" fill="#000" opacity=".25" cx="3" cy="5"/><circle r="44" fill="url(#edPc)" stroke="${col}" stroke-width="3"/><circle r="35" fill="none" stroke="${col}" stroke-width="2" opacity=".8"/><text font-size="46" font-weight="900" font-family='${CJK}' fill="${col}" text-anchor="middle" dominant-baseline="central" y="2">${CH[p.side][p.type]}</text></g>`;
   }
   function render() {
-    let B, s, targets = [], last = null, status = '', check = -1, over = false, valid = false;
+    let B, s, targets = [], last = null, status = '', check = -1, over = false, valid = false, game = null;
     if (mode === 'setup') {
       B = setupB; s = setupSide;
       status = fenError ? `FEN đang lỗi: ${fenError}` : setupWarnings();
@@ -77,7 +77,7 @@
       let r;
       try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
       if (r) {
-        B = r.b; s = r.s; last = r.last; valid = true;
+        B = r.b; s = r.s; last = r.last; valid = true; game = r;
         const moves = legal(B, s);
         if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
@@ -117,7 +117,7 @@
     $('edSide').value = setupSide;
     // Báo thế cờ đang hiển thị cho thanh đánh giá (js/app/ai-panel.js); bỏ qua khi đang kéo quân.
     // record: đang ghi nước (không xem lại một nước cũ) thì mới hiện mũi tên gợi ý tự động.
-    if (window.onEditorPosition && !(drag && drag.moved) && !draw) window.onEditorPosition({ B, s, valid, record: mode === 'record' && !view });
+    if (window.onEditorPosition && !(drag && drag.moved) && !draw) window.onEditorPosition({ B, s, valid, record: mode === 'record' && !view, game });
     tray.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === (tool ? tool.side + tool.type : tool === null ? 'move' : 'erase'))));
   }
   const circleSvg = (sq, color) => `<circle cx="${X(sq % 9)}" cy="${Y((sq / 9) | 0)}" r="49" fill="none" stroke="${color}" stroke-width="8" opacity=".85" pointer-events="none"/>`;

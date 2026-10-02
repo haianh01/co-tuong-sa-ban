@@ -90,8 +90,10 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
 ### Chọn máy tính cờ
 
-- **Máy có sẵn**: nhẹ, dùng được ngay, mức nghiệp dư khá.
+- **Máy có sẵn**: nhẹ, dùng được ngay, mức nghiệp dư khá. Lặp lại một thế cờ lần thứ ba thì tính là hòa (không phân biệt bên chiếu dai).
 - **Pikafish (mạnh)**: [Pikafish](https://github.com/official-pikafish/Pikafish) là máy cờ tướng mã nguồn mở mạnh nhất hiện nay (mạng nơ-ron NNUE), vượt xa kỳ thủ người. Pikafish tuân theo luật châu Á về chiếu dai / đuổi dai.
+
+Cả hai máy đều nhận lịch sử ván (thế cờ ban đầu và các nước đã đi trong kịch bản) khi gợi ý, chấm thanh đánh giá và kiểm duyệt, nên xét được luật lặp nước trên cả ván chứ không chỉ thế cờ hiện tại.
   Lần đầu chọn Pikafish, trang sẽ hướng dẫn:
   1. Tải file mạng nơ-ron `pikafish.nnue` (khoảng 50 MB) từ bản phát hành chính thức.
   2. Chọn file vừa tải. Trình duyệt lưu file này lại, những lần sau dùng được ngay.
@@ -118,6 +120,10 @@ bash tools/pikafish/build.sh
 ```
 
 Pikafish phát hành theo giấy phép GPLv3; mã nguồn và bản vá nằm trong `tools/pikafish/`.
+
+## Tự lưu bản nháp
+
+Tiêu đề, thế cờ và kịch bản đang soạn được tự lưu trong trình duyệt sau mỗi lần sửa. Lỡ tải lại hay đóng tab thì mở trang lại là soạn tiếp được (trang báo “Đã mở lại bản bạn đang soạn lần trước”). Đang soạn dở mà chọn một mẫu khác thì trang hỏi trước khi thay kịch bản. Bản nháp chỉ có một bản, nằm trong trình duyệt đang dùng; muốn giữ lâu dài hay mang sang máy khác thì bấm “Lưu thành mẫu”.
 
 ## Thêm bài giảng
 
