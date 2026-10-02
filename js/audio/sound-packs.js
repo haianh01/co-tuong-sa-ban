@@ -108,11 +108,12 @@ let SOUND_PACK = 'classic';
 
 // Timeline event name -> pack hook.
 const HOOK = { lift: 'lift', slide: 'move', whoosh: 'move', clack: 'land', capture: 'capture', drop: 'drop', check: 'check', boom: 'mate' };
-function playSfx(e) {
+// at: thời điểm phát theo đồng hồ của actx (mặc định là ngay bây giờ; khi dựng âm thanh offline thì là e.t).
+function playSfx(e, at) {
   if (!actx) return;
   const hook = HOOK[e.s]; if (!hook) return;
   const pack = SOUND_PACKS[SOUND_PACK], fn = pack[hook] ? pack : SOUND_PACKS.classic;
-  try { fn[hook].call(fn, e, actx.currentTime, e.s); } catch (err) {}
+  try { fn[hook].call(fn, e, at == null ? actx.currentTime : at, e.s); } catch (err) {}
 }
 function fire(prev, t) { if (!actx || muted) return; for (const e of TL.sounds) if (prev < e.t && t >= e.t) playSfx(e); }
 

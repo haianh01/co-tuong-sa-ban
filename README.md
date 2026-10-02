@@ -38,7 +38,7 @@ js/audio/
   sound-packs.js        Các bộ âm thanh (thêm bộ mới ở đây)
 js/app/
   controls.js           Nút phát, tua, chương, vòng lặp khung hình
-  export.js             Xuất video MP4/WebM
+  export.js             Xuất video MP4: dựng từng khung + WebCodecs (nhanh), dự phòng quay thời gian thực
   presets.js            Thế cờ và kịch bản mẫu (thêm bài giảng ở đây)
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
@@ -49,6 +49,7 @@ js/app/
 engine/pikafish.js      Pikafish đơn luồng (WebAssembly, tạo bằng tools/pikafish/build.sh)
 engine/pikafish-mt.js   Pikafish đa luồng (cần mở trang qua tools/serve.py)
 vendor/anthropic-sdk.js Thư viện chính thức @anthropic-ai/sdk đóng gói cho trình duyệt (tools/vendor-anthropic-sdk.sh)
+vendor/mp4-muxer.js     Thư viện mp4-muxer (MIT) đóng gói khung hình WebCodecs thành MP4 (tools/vendor-mp4-muxer.sh)
 tools/build.py          Gộp tất cả thành một file dist/co-tuong-sa-ban.html
 tools/serve.py          Máy chủ cục bộ kèm header COOP/COEP để Pikafish chạy đa luồng
 tools/pikafish/         Vá và biên dịch Pikafish sang WebAssembly
@@ -120,6 +121,16 @@ bash tools/pikafish/build.sh
 ```
 
 Pikafish phát hành theo giấy phép GPLv3; mã nguồn và bản vá nằm trong `tools/pikafish/`.
+
+## Xuất video
+
+Bấm “Xuất video” (cạnh nút phát). Trên Chrome / Edge, trang dựng lần lượt từng khung hình theo đúng thời điểm, mã hóa bằng WebCodecs của trình duyệt (H.264 + AAC nếu máy hỗ trợ, không thì VP9 + Opus) rồi ghi thành file MP4:
+
+- Không phụ thuộc thời gian thực: máy có card đồ họa thường xuất nhanh hơn độ dài video; máy yếu thì lâu hơn nhưng video vẫn mượt đủ 30 khung/giây, không bị rơi khung.
+- Vẫn chạy khi chuyển sang tab khác. Có thanh tiến độ, thời gian còn lại và nút “Hủy”.
+- Tiếng động được dựng riêng một lần (OfflineAudioContext) nên khớp từng khung hình. Đang tắt tiếng thì video không có âm thanh.
+
+Trình duyệt không có WebCodecs thì trang quay theo thời gian thực như cũ (MediaRecorder): tự tạm dừng khi chuyển tab, cũng có nút “Hủy”.
 
 ## Tự lưu bản nháp
 
