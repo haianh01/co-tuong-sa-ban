@@ -114,8 +114,10 @@ const AIEngine = (() => {
   // red: điểm theo phía Đỏ, null = chưa có.
   function showBar(red, side) {
     evalBar.classList.remove('busy');
+    // Chưa có điểm: thanh xám trơn (không chia đôi đỏ/xanh, kẻo trông như thế cờ cân bằng).
+    evalBar.classList.toggle('none', red == null);
     if (red == null) {
-      evalRed.style.height = '50%'; evalNum.textContent = '–'; evalNum.className = 'evalbar-num at-red';
+      evalRed.style.height = '0%'; evalNum.textContent = '–'; evalNum.className = 'evalbar-num at-red';
       evalBar.setAttribute('aria-valuenow', '50'); evalBar.setAttribute('aria-valuetext', 'Chưa có đánh giá'); return;
     }
     const pct = Math.round(redChance(red) * 1000) / 10;
@@ -138,7 +140,6 @@ const AIEngine = (() => {
   window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); };
   async function runEval() {
     const pos = evalPos;
-    evalBar.classList.toggle('off', !evalAuto.checked);
     if (!pos || !pos.valid) { showBar(null); return; }
     const { B, s: side } = pos, key = posKey(B, side);
     if (!legal(B, side).length) { showBar(side === 'r' ? -MATE : MATE, side); return; } // hết nước là thua
@@ -159,7 +160,7 @@ const AIEngine = (() => {
       remember(B, side, r.lines[0].score, r.depth);
       if (wantHints) hintCache.set(key, r.lines);
       if (my === evalSeq && evalPos === pos) {
-        if (evalAuto.checked || hit) showBar(toRed(r.lines[0].score, side), side);
+        showBar(toRed(r.lines[0].score, side), side); // đã tính thì luôn hiện, kể cả khi tắt "Tự chấm"
         if (wantHints && hintAuto.checked) applyHints(key, r.lines);
       }
     } catch (e) { /* bị dừng vì có việc khác: bỏ qua */ }

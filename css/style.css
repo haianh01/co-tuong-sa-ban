@@ -63,7 +63,9 @@ textarea.code{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-s
 .evalbar-num{position:absolute;left:0;right:0;font-size:10px;font-weight:800;line-height:1.1;text-align:center;color:#fff;letter-spacing:-.02em;z-index:1}
 .evalbar-num.at-red{bottom:4px}.evalbar-num.at-black{top:4px}
 .evalbar.busy .evalbar-num{opacity:.55}
-.evalbar.off{opacity:.45}
+.evalbar.none{background:var(--line)}
+.evalbar.none::after{display:none}
+.evalbar.none .evalbar-num{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.evalbar-red{transition:none}}
 .chk{display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer}
 .chk input{width:16px;height:16px;accent-color:var(--brass)}
