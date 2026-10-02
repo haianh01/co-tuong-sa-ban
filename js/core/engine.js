@@ -85,9 +85,11 @@ function describe(B, side, m) {
   return { type: p.type, file: fileOf(side, fc), dir, num: straight && dir !== '-' ? Math.abs(fwd) : fileOf(side, tc) };
 }
 function sameFile(B, side, type, col) { const o = []; for (let r = 0; r < 10; r++) { const q = B[r * 9 + col]; if (q && q.side === side && q.type === type) o.push(r); } return o; }
+// Nhiều quân cùng loại trên một cột: 2 quân ghi t (trước) / s (sau), 3 quân ghi t / g (giữa) / s.
 function frontTag(B, side, m) {
-  const p = B[m[0]], same = sameFile(B, side, p.type, m[0] % 9); if (same.length !== 2) return null;
-  const front = side === 'r' ? Math.min(...same) : Math.max(...same); return ((m[0] / 9) | 0) === front ? 't' : 's';
+  const p = B[m[0]], same = sameFile(B, side, p.type, m[0] % 9); if (same.length < 2 || same.length > 3) return null;
+  if (side === 'b') same.reverse(); // tính từ phía trước của bên đi (Đỏ tiến lên hàng nhỏ, Đen tiến xuống hàng lớn)
+  return (same.length === 2 ? 'ts' : 'tgs')[same.indexOf((m[0] / 9) | 0)];
 }
 function toNotation(B, side, m) { const d = describe(B, side, m), tag = frontTag(B, side, m); return LETTER[d.type] + (tag || d.file) + d.dir + d.num; }
 const TYPE_OF = { X: 'r', R: 'r', M: 'h', N: 'h', H: 'h', T: 'e', E: 'e', S: 'a', A: 'a', P: 'c', C: 'c', B: 'p', K: 'k' };
@@ -99,14 +101,14 @@ function resolve(B, side, raw) {
     const L = legal(B, side).find(x => x[0] === from && x[1] === to);
     if (!L) throw 'nước đi không hợp lệ ở thế cờ này'; return L;
   }
-  m = s.match(/^(Tg|[XMNHTESAPCBK])([1-9]|[tsTS])([.\/\-+=])([1-9])$/i);
+  m = s.match(/^(Tg|[XMNHTESAPCBK])([1-9]|[tgsTGS])([.\/\-+=])([1-9])$/i);
   if (!m) throw 'không đọc được ký hiệu (ví dụ đúng: X4.5, M2.3, P2-5)';
   const type = /^tg$/i.test(m[1]) ? 'k' : TYPE_OF[m[1].toUpperCase()];
   const fsel = m[2].toLowerCase(), dir = { '+': '.', '=': '-' }[m[3]] || m[3], num = +m[4];
   const cands = legal(B, side).filter(x => {
     if (B[x[0]].type !== type) return false;
     const d = describe(B, side, x); if (d.dir !== dir || d.num !== num) return false;
-    if (fsel === 't' || fsel === 's') return frontTag(B, side, x) === fsel;
+    if ('tgs'.includes(fsel)) return frontTag(B, side, x) === fsel;
     return d.file === +fsel;
   });
   if (!cands.length) {

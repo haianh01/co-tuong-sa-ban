@@ -26,7 +26,7 @@ function updateDOM(t) {
   if (document.activeElement !== scrub) scrub.value = t;
   timeEl.textContent = `${fmt(t)} / ${fmt(TL.DUR)}`;
   let ci = 0; TL.chapters.forEach((c, i) => { if (t >= c[0]) ci = i; }); chapBtns.forEach((b, i) => b.classList.toggle('on', i === ci));
-  if (recording) $('recNote').textContent = `Đang quay video ${fmt(t)} / ${fmt(TL.DUR)}`;
+  if (recording) $('recText').textContent = `Đang quay video ${fmt(t)} / ${fmt(TL.DUR)}`;
 }
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg>',

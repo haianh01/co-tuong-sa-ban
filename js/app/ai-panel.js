@@ -230,7 +230,8 @@ const AIEngine = (() => {
       plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0 });
       B = apply(B, m); side = opp(side);
     }
-    let no = 1; plies.forEach((p, i) => { if (i && p.side === s0) no++; p.no = no; });
+    // Đánh số theo chuẩn: mỗi số là một cặp Đỏ rồi Đen (Đen đi trước thì nước đầu là "1…", nước Đỏ sau đó là "2.").
+    let no = 1; plies.forEach((p, i) => { if (i && p.side === 'r') no++; p.no = no; });
     return { plies, err, s0 };
   }
   function classify(p) {
@@ -312,7 +313,7 @@ const AIEngine = (() => {
     const flagged = plies.filter(p => ['inacc', 'mistake', 'blunder'].includes(p.cls.key));
     out.innerHTML = evalGraph(plies, s0) + `<ul class="ai-sum">${sum(s0)}${sum(opp(s0))}</ul>` +
       `<ol class="ai-review">${plies.map((p, i) => `<li class="k-${p.cls.key}"><button type="button" data-i="${i}">` +
-        `<span class="n">${p.no}${p.side === s0 ? '.' : '…'}</span><b>${esc(p.nota)}${p.cls.sym}</b>` +
+        `<span class="n">${p.no}${p.side === 'r' ? '.' : '…'}</span><b>${esc(p.nota)}${p.cls.sym}</b>` +
         `<span class="tag">${esc(p.cls.label)}</span><span class="ai-ev">${esc(scoreText(p.played, p.side))}</span>` +
         (same(p.m, p.bestMove) ? '' : `<span class="alt">Máy chọn ${esc(nota(p.B, p.side, p.bestMove))}</span>`) +
         `</button></li>`).join('')}</ol>` +
@@ -322,7 +323,7 @@ const AIEngine = (() => {
       const hints = [{ m: p.m, color: same(p.m, p.bestMove) ? ARROW[0] : '#f59e0b', w: 16 }];
       if (!same(p.m, p.bestMove)) hints.unshift({ m: p.bestMove, color: ARROW[0], w: 12 });
       const ply = p.idx; // số nước đã đi trước nước này
-      const note = `Trước nước ${p.no}${p.side === s0 ? '' : '…'} (${sideName(p.side)} đi). Kịch bản: ${p.nota} (mũi tên cam nếu khác máy)` +
+      const note = `Trước nước ${p.no}${p.side === 'r' ? '' : '…'} (${sideName(p.side)} đi). Kịch bản: ${p.nota} (mũi tên cam nếu khác máy)` +
         (same(p.m, p.bestMove) ? ', trùng nước máy chọn.' : `; máy chọn ${nota(p.B, p.side, p.bestMove)} (mũi tên xanh): ${pvText(p.B, p.side, p.bestPv, 6)}.`) + ' Bấm vào bàn cờ để quay lại.';
       Editor.view(ply, hints, note);
     };
@@ -405,7 +406,7 @@ const AIEngine = (() => {
       cross.setAttribute('x1', X(q.x)); cross.setAttribute('x2', X(q.x)); cross.setAttribute('visibility', 'visible');
       cur.setAttribute('cx', X(q.x)); cur.setAttribute('cy', Y(q.red)); cur.setAttribute('visibility', 'visible');
       const txt = scoreText(q.red, 'r');
-      tip.textContent = q.p ? `${q.p.no}${q.p.side === s0 ? '.' : '…'} ${q.p.nota}${q.p.cls.sym} · ${txt} · ${q.p.cls.label}` : `Thế cờ ban đầu · ${txt}`;
+      tip.textContent = q.p ? `${q.p.no}${q.p.side === 'r' ? '.' : '…'} ${q.p.nota}${q.p.cls.sym} · ${txt} · ${q.p.cls.label}` : `Thế cờ ban đầu · ${txt}`;
       tip.style.display = 'block';
       tip.style.left = Math.min(Math.max(X(q.x) * k, 60), r.width - 60) + 'px';
       tip.style.top = (Y(q.red) * k - 8) + 'px';

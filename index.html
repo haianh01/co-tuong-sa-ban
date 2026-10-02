@@ -21,7 +21,7 @@
     <div class="stage" id="stage">
       <canvas id="cv" role="img" aria-label="Bàn cờ tướng 3D trên bàn trà, camera tự động theo nước đi"></canvas>
       <button class="play-big" id="bigPlay" aria-label="Phát video"><span><svg viewBox="0 0 24 24"><path d="M5 3l16 9-16 9z" fill="#1d1208"/></svg></span></button>
-      <div class="rec-note" id="recNote">Đang quay video</div>
+      <div class="rec-note" id="recNote"><span id="recText">Đang quay video</span> <button type="button" id="recCancel">Hủy</button></div>
     </div>
     <div class="controls">
       <button class="btn" id="playBtn" aria-label="Phát"></button>
@@ -218,7 +218,7 @@
         <div class="field">
           <label for="script">Kịch bản (mỗi dòng một nhịp)</label>
           <textarea id="script" class="code" rows="12" spellcheck="false"></textarea>
-          <p class="hint">Cú pháp: <code>nước đi | lời thoại</code>. Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu <code>.</code> tiến, <code>/</code> thoái, <code>-</code> bình. Hai quân cùng cột: <code>Xt.3</code> (trước), <code>Xs.3</code> (sau). Cũng nhận tọa độ kiểu <code>h2e2</code>. Dòng bắt đầu bằng <code>|</code> chỉ có lời thoại, camera giữ cảnh. Dòng bắt đầu bằng <code>//</code> bị bỏ qua.</p>
+          <p class="hint">Cú pháp: <code>nước đi | lời thoại</code>. Ký hiệu: X Xe, M Mã, T Tượng, S Sĩ, Tg Tướng, P Pháo, B Tốt; dấu <code>.</code> tiến, <code>/</code> thoái, <code>-</code> bình. Hai quân cùng cột: <code>Xt.3</code> (trước), <code>Xs.3</code> (sau); ba quân cùng cột thêm <code>Bg.1</code> (giữa). Cũng nhận tọa độ kiểu <code>h2e2</code>. Dòng bắt đầu bằng <code>|</code> chỉ có lời thoại, camera giữ cảnh. Dòng bắt đầu bằng <code>//</code> bị bỏ qua.</p>
         </div>
         <details class="field pgn">
           <summary>Nhập / xuất PGN</summary>
