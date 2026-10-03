@@ -75,9 +75,10 @@
       if (!fenError) { try { const r = replay(); if (r.err) status += ` Lưu ý: kịch bản không khớp với thế cờ này. ${r.err}.`; } catch (e) { /* FEN lỗi đã báo ở trên */ } }
     } else {
       let r;
-      try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
+      // view.board: xem một thế cờ bất kỳ (ví dụ thế cờ sau vài nước trong biến của máy), không phải thế cờ của kịch bản.
+      try { r = view && view.board ? { b: view.board, s: view.side, n: 0, last: view.last || null, err: '' } : replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
       if (r) {
-        B = r.b; s = r.s; last = r.last; valid = true; game = r;
+        B = r.b; s = r.s; last = r.last; valid = true; game = view && view.board ? null : r;
         const moves = legal(B, s);
         if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
@@ -268,6 +269,9 @@
     cutAtError,
     showHints: list => { view = null; hints = list || []; render(); },
     hintCount: () => hints.length,
+    // Hiện một thế cờ bất kỳ (bấm vào bàn cờ để quay lại thế cờ của kịch bản).
+    preview: (board, side, list, note, last) => { if (mode !== 'record') setMode('record'); view = { board, side, hints: list || [], note, last }; render(); },
+    viewing: () => !!view,
     view: (ply, list, note) => { if (mode !== 'record') setMode('record'); view = { ply, hints: list || [], note }; render(); svg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
     play: m => { if (mode !== 'record') setMode('record'); view = null; const cur = current(); if (!cur || cur.err) return false; return recordMove(m[0], m[1]); }
   };

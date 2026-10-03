@@ -123,6 +123,31 @@
           <p class="ai-status" id="aiStatus" role="status" aria-live="polite"></p>
           <div id="aiOut"></div>
         </div>
+        <details class="ai-box think-box" id="thinkBox">
+          <summary><span class="th-title">Suy nghĩ của máy</span> <span class="hint">Xem Pikafish tính những gì, đổi ý ra sao</span></summary>
+          <div class="think-body">
+            <div class="think-ctl">
+              <label>Số phương án <select id="thMulti" class="fmt"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+              <label>Thời gian <select id="thTime" class="fmt"><option value="10000">10 giây</option><option value="30000" selected>30 giây</option><option value="60000">1 phút</option><option value="180000">3 phút</option></select></label>
+              <button class="btn primary" id="thGo" type="button">Bắt đầu suy nghĩ</button>
+              <button class="btn" id="thStop" type="button" hidden>Dừng</button>
+            </div>
+            <p class="ai-status" id="thStatus" role="status" aria-live="polite"></p>
+            <p class="th-stats" id="thStats"></p>
+            <ol class="ai-list th-lines" id="thLines"></ol>
+            <div class="th-nav" id="thNav" hidden>
+              <button class="btn sm" id="thPrev" type="button" aria-label="Nước trước trong biến">◀</button>
+              <button class="btn sm" id="thNext" type="button" aria-label="Nước sau trong biến">▶</button>
+              <button class="btn sm" id="thHome" type="button">Về thế cờ hiện tại</button>
+              <span class="hint" id="thNavText"></span>
+            </div>
+            <figure class="ai-graph th-graph" id="thGraph" hidden></figure>
+            <details class="th-sub" id="thLogBox" open><summary>Nhật ký đổi ý theo độ sâu</summary><div class="th-log-wrap"><table class="th-log" id="thLog"></table></div></details>
+            <details class="th-sub"><summary>Dòng UCI gốc</summary>
+              <div class="actions"><button class="btn sm" id="thCopy" type="button">Sao chép (để dán cho Claude)</button><span class="hint" id="thCopyInfo"></span></div>
+              <pre class="th-raw" id="thRaw"></pre></details>
+          </div>
+        </details>
         <div class="ai-box cm-box" id="cmBox" role="region" aria-labelledby="cmTitle" hidden>
           <div class="ai-head">
             <h3 id="cmTitle">Lời thoại bằng Claude</h3>
@@ -268,6 +293,7 @@
 <script src="js/app/board-editor.js"></script>
 <script src="js/app/pikafish.js"></script>
 <script src="js/app/ai-panel.js"></script>
+<script src="js/app/think.js"></script>
 <script src="js/app/ai-commentary.js"></script>
 </body>
 </html>

@@ -130,6 +130,7 @@ if (self.name !== 'em-pthread') onmessage = async e => {
     return inst;
   }
 
+  let boot = null; // mã máy + mạng nơ-ron đã nạp, để thay một bản máy mà không phải khởi động lại tất cả
   function reset() {
     for (const i of insts) { i.worker.terminate(); if (i.job) { const j = i.job; i.job = null; j.reject(new Error('stopped')); } }
     insts = []; ready = null; mode = null;
@@ -146,6 +147,7 @@ if (self.name !== 'em-pthread') onmessage = async e => {
       if (shared) { try { src = await loadScript('pikafish-mt.js', 'PIKAFISH_MT_SRC'); } catch (e) { shared = false; } }
       if (!shared) src = await loadScript('pikafish.js', 'PIKAFISH_SRC');
       const count = shared ? 1 : n;
+      boot = { src, pool: shared ? n + 2 : 0, net };
       // Luồng tìm kiếm của bản chung bộ nhớ được tạo sẵn: n + 2 (dự phòng lúc đổi số luồng).
       const list = Array.from({ length: count }, () => makeInstance(src, shared ? n + 2 : 0, net));
       insts = list;
@@ -263,8 +265,37 @@ if (self.name !== 'em-pthread') onmessage = async e => {
     return { lines: all, depth: all.length ? all[0].depth : 0, nodes: parts.reduce((s, p) => s + p.nodes, 0), ms: Math.round(performance.now() - t0), engine: 'pikafish' };
   }
 
+  // ---------- "Suy nghĩ của máy": chạy lâu và chuyển nguyên từng dòng UCI ra ngoài ----------
+  // opts: { board, side, history, multi, time (ms) }; onLine(line) nhận mọi dòng Pikafish in ra.
+  let thinkInst = null;
+  async function think(opts, onLine) {
+    await start();
+    const inst = await acquire(); thinkInst = inst;
+    const h = opts.history, position = h && h.moves && h.moves.length
+      ? `position fen ${fenOf(h.board, h.side)} moves ${h.moves.map(toUci).join(' ')}` : `position fen ${fenOf(opts.board, opts.side)}`;
+    try {
+      await inst.raw(['setoption name UCI_ShowWDL value true', `setoption name MultiPV value ${Math.max(1, opts.multi || 1)}`, position,
+        `go movetime ${Math.max(500, Math.round(opts.time || 30000))}`], onLine);
+    } finally {
+      if (thinkInst === inst) thinkInst = null;
+      if (insts.includes(inst)) { await inst.raw(['setoption name UCI_ShowWDL value false']).catch(() => {}); release(inst); }
+    }
+  }
+  // Dừng sớm. Bản đa luồng nhận lệnh "stop" ngay (in bestmove rồi kết thúc). Bản đơn luồng đang bận tính
+  // nên không đọc được lệnh: tắt hẳn bản đó (kết quả đã in vẫn giữ) rồi khởi động một bản mới thay vào ở nền.
+  function stopThink() {
+    const inst = thinkInst; if (!inst) return;
+    if (mode && mode.shared) { inst.worker.postMessage({ type: 'cmd', cmd: 'stop', id: 0 }); return; }
+    thinkInst = null;
+    const i = insts.indexOf(inst); if (i < 0) return;
+    inst.worker.terminate();
+    if (inst.job) { const j = inst.job; inst.job = null; j.reject(new Error('stopped')); }
+    const ni = makeInstance(boot.src, boot.pool, boot.net); ni.busy = true; insts[i] = ni;
+    ni.ready.then(() => ni.raw(['position startpos', 'go depth 1'])).then(() => release(ni)).catch(() => reset());
+  }
+
   return {
-    analyze, start, stop: reset, useFile, NNUE_URL, canShared, MAX, RECOMMENDED,
+    analyze, think, stopThink, start, stop: reset, useFile, NNUE_URL, canShared, MAX, RECOMMENDED,
     info: () => mode,
     // Số lần phân tích chạy song song được (kiểm duyệt chấm nhiều nước cùng lúc).
     lanes: () => (mode ? mode.instances : 1),

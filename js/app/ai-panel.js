@@ -66,7 +66,8 @@ const AIEngine = (() => {
   const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const levelSel = $('aiLevel'), hintBtn = $('aiHint'), reviewBtn = $('aiReview'), stopBtn = $('aiStop'), statusEl = $('aiStatus'), out = $('aiOut');
-  const ARROW = ['#2fbf6a', '#3b82f6', '#a855f7'];
+  // Màu 3 phương án (mũi tên trên bàn, biểu đồ "Suy nghĩ của máy"): đã kiểm tra phân biệt được cả với người mù màu.
+  const ARROW = ['#1f9e55', '#3b82f6', '#d9409a'];
   let busy = false, lastReview = null;
 
   // Ký hiệu một nước đi, có kiểm tra ngược để chắc chắn đọc lại được.
@@ -94,6 +95,7 @@ const AIEngine = (() => {
   const timeBudget = () => +levelSel.value;
 
   function setBusy(b) {
+    if (b && window.thinkActive && window.stopThinking) window.stopThinking('Đã dừng để Trợ lý AI gợi ý / kiểm duyệt.');
     busy = b; hintBtn.disabled = b; reviewBtn.disabled = b; stopBtn.hidden = !b;
   }
   function say(msg, isErr) { statusEl.textContent = msg; statusEl.classList.toggle('err', !!isErr); }
@@ -140,7 +142,7 @@ const AIEngine = (() => {
     Editor.showHints(lines.map((l, i) => ({ m: l.move, color: ARROW[i], w: i ? 10 : 16 })).reverse());
   }
   // Bàn cờ tương tác gọi hàm này mỗi khi thế cờ hiển thị thay đổi.
-  window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); };
+  window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); if (window.onThinkPosition) window.onThinkPosition(pos); };
   async function runEval() {
     const pos = evalPos;
     if (!pos || !pos.valid) { showBar(null); return; }
@@ -152,7 +154,7 @@ const AIEngine = (() => {
     if (hit) showBar(hit.red, side);
     else if (!evalAuto.checked) showBar(null);
     if ((hit || !evalAuto.checked) && (!wantHints || hh)) return;
-    if (busy) return; // đang gợi ý / kiểm duyệt: giữ nguyên, kết quả sẽ tự cập nhật
+    if (busy || window.thinkActive) return; // đang gợi ý / kiểm duyệt / máy đang suy nghĩ: giữ nguyên, kết quả sẽ tự cập nhật
     // Pikafish chưa khởi động (chưa có mạng nơ-ron) thì không tự khởi động ở đây.
     if (engineSel.value === 'pikafish' && !PikafishEngine.info()) { if (!hit) showBar(null); return; }
     const my = ++evalSeq, pf = AIEngine.kind() === 'pikafish';
@@ -462,6 +464,8 @@ const AIEngine = (() => {
       return false;
     }
   }
+  // Dùng chung cho khung "Suy nghĩ của máy" (js/app/think.js).
+  window.AIKit = { nota, scoreText, toCodes, sideNum, gameHist, ARROW, prepareEngine, isBusy: () => busy, engine: () => engineSel.value, remember, showBar, toRed, evalNow: () => runEval() };
   engineSel.onchange = () => {
     try { localStorage.setItem('aiEngine', engineSel.value); } catch (e) { /* bỏ qua */ }
     if (busy) AIEngine.stop();

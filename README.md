@@ -44,6 +44,7 @@ js/app/
   studio.js             Form dựng cảnh
   my-presets.js         Mẫu của tôi: lưu / xóa / tải xuống / mở danh sách mẫu (lưu trong trình duyệt)
   ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
+  think.js              Suy nghĩ của máy: hiện từng dòng Pikafish báo ra (phương án, đổi ý, biểu đồ, biến, UCI gốc)
   pikafish.js           Cầu nối tới máy Pikafish (Web Worker, UCI)
   ai-commentary.js      Lời thoại bằng Claude (gói claude.ai hoặc khóa API): gửi dữ kiện, duyệt, chèn
 engine/pikafish.js      Pikafish đơn luồng (WebAssembly, tạo bằng tools/pikafish/build.sh)
@@ -71,6 +72,14 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
 - **Gợi ý nước đi**: tính 3 nước tốt nhất cho thế cờ ở cuối kịch bản, vẽ mũi tên trên bàn cờ kèm diễn biến dự đoán. Bấm “Đi nước này” để thêm vào kịch bản.
 - **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
+- **Suy nghĩ của máy** (khung mở/đóng dưới Trợ lý AI, cần chọn Pikafish): bấm “Bắt đầu suy nghĩ” để Pikafish nghĩ 10 giây đến 3 phút cho thế cờ đang ghi, với 1 đến 5 phương án. Khung hiện mọi điều Pikafish báo ra trong lúc nghĩ:
+  1. các phương án đang dẫn đầu, cập nhật liên tục: nước đi, điểm, độ sâu, tỉ lệ Đỏ thắng / hòa / Đen thắng, biến chính; mũi tên trên bàn đổi theo;
+  2. nhật ký theo độ sâu, đánh dấu những lần máy đổi nước tốt nhất;
+  3. biểu đồ điểm theo độ sâu của 3 phương án đầu (rê chuột để xem từng độ sâu);
+  4. bấm một nước trong biến để xem thế cờ đó trên bàn, nút ◀ ▶ để đi lui / tới trong biến;
+  5. nguyên văn các dòng UCI, sao chép được (kèm FEN) để dán cho Claude.
+
+  Bấm Dừng để dừng sớm; đi nước khác, bấm Gợi ý / Kiểm duyệt hay đóng khung thì máy cũng tự dừng. Pikafish không cho xem từng thế cờ nó duyệt (hàng triệu thế), chỉ báo một dòng mỗi khi nghĩ sâu thêm một tầng; khung này hiện đủ các dòng đó.
 - **Mũi tên gợi ý tự động**: khi ghi nước đi, sau mỗi nước máy tự tính và vẽ mũi tên cho 3 nước tốt nhất (xanh lá là nước tốt nhất). Tắt bằng ô “Tự hiện mũi tên gợi ý”; trang nhớ lựa chọn. Nút “Gợi ý nước đi” vẫn dùng để tính kỹ hơn và xem diễn biến.
 - **Tự vẽ để phân tích**: kéo chuột phải trên bàn cờ để vẽ mũi tên, bấm chuột phải vào một ô để khoanh tròn (như lichess); chọn màu, vẽ lại đúng nét để xóa, hoặc bấm “Xóa nét vẽ”. Trên điện thoại bật nút “Vẽ mũi tên” rồi kéo bằng ngón tay. Nét vẽ tự xóa khi đi nước mới.
 - **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
