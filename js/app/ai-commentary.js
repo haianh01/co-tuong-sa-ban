@@ -91,7 +91,7 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
       const after = apply(p.B, p.m), cap = p.B[p.m[1]];
       const bestPv = pvNotas(p.B, p.side, p.bestPv, 6);
       return {
-        ply: p.idx, nuoc: `${p.no}${p.side === s0 ? '.' : '…'}`, ben_di: sideName(p.side), ky_hieu: p.nota, fen_truoc_nuoc: toFEN(p.B, p.side),
+        ply: p.idx, nuoc: `${p.no}${p.side === 'r' ? '.' : '…'}`, ben_di: sideName(p.side), ky_hieu: p.nota, fen_truoc_nuoc: toFEN(p.B, p.side),
         danh_gia_cua_may: p.cls.label,
         diem_truoc_nuoc: fmtScore(toRed(p.best, p.side)), diem_sau_nuoc: fmtScore(toRed(p.played, p.side)),
         may_chon: bestPv[0] || null, dien_bien_may_chon: bestPv.join(' '),
@@ -182,7 +182,7 @@ Cán cân vật chất quy đổi theo giá trị quân: Xe 9, Pháo 4,5, Mã 4,
   }
 
   // Ký hiệu nước đi trong câu Claude viết mà không có trong dữ kiện của máy cờ.
-  const MOVE_RE = /(?:^|[^\p{L}\p{N}])((?:Tg|[XMTSPB])[1-9ts][.\/\-][1-9]|[a-i][0-9][a-i][0-9])(?![\p{L}\p{N}])/gu;
+  const MOVE_RE = /(?:^|[^\p{L}\p{N}])((?:Tg|[XMTSPB])[1-9tgs][.\/\-][1-9]|[a-i][0-9][a-i][0-9])(?![\p{L}\p{N}])/gu;
   function unknownMoves(text, allowed) {
     const bad = []; let m;
     MOVE_RE.lastIndex = 0;

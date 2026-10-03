@@ -27,6 +27,11 @@ sdk = root / 'vendor' / 'anthropic-sdk.js'
 if sdk.exists():
     html = html.replace('</body>', '<script>\n' + sdk.read_text(encoding='utf-8') + '</script>\n</body>')
 
+# mp4-muxer cho "Xuất video" nhanh (đóng gói khung hình WebCodecs thành MP4).
+mux = root / 'vendor' / 'mp4-muxer.js'
+if mux.exists():
+    html = html.replace('</body>', '<script>\n' + mux.read_text(encoding='utf-8') + '</script>\n</body>')
+
 out = root / 'dist' / 'co-tuong-sa-ban.html'
 out.parent.mkdir(exist_ok=True)
 out.write_text(html, encoding='utf-8')

@@ -92,7 +92,7 @@ function pgnToScript(text) {
     const vn = pgnTokenToVN(it.raw, format);
     let m;
     try { if (!vn) throw 'không đọc được ký hiệu'; m = resolve(B, side, vn); }
-    catch (e) { errors.push(`Nước ${Math.floor(n / 2) + 1}${side === 'r' ? '' : '…'} “${it.raw}”: ${e}. Các nước sau bị bỏ qua.`); stopped = true; break; }
+    catch (e) { errors.push(`Nước ${Math.floor((n + (s0 === 'b' ? 1 : 0)) / 2) + 1}${side === 'r' ? '' : '…'} “${it.raw}”: ${e}. Các nước sau bị bỏ qua.`); stopped = true; break; }
     let nota = toNotation(B, side, m);
     try { const back = resolve(B, side, nota); if (back[0] !== m[0] || back[1] !== m[1]) throw 0; } catch (e) { nota = pgnICCS(m); }
     lines.push({ move: nota, text: '' });
@@ -120,8 +120,9 @@ function scriptToPGN(fen, title, script) {
     if (mv) {
       let m;
       try { m = resolve(B, side, mv); } catch (e) { errors.push(`Dòng ${li + 1} (“${mv}”): ${e}`); break; }
-      const no = Math.floor(n / 2) + 1;
-      if (side === s0) body.push(`${no}.`); else if (n === 0) body.push(`${no}...`);
+      // Số nước theo chuẩn: mỗi số là một cặp Đỏ rồi Đen; Đen đi trước thì nước đầu ghi "1...".
+      const no = Math.floor((n + (s0 === 'b' ? 1 : 0)) / 2) + 1;
+      if (side === 'r') body.push(`${no}.`); else if (n === 0) body.push(`${no}...`);
       body.push(pgnICCS(m));
       B = apply(B, m); side = opp(side); n++;
     }

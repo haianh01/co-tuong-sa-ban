@@ -38,17 +38,19 @@ js/audio/
   sound-packs.js        Các bộ âm thanh (thêm bộ mới ở đây)
 js/app/
   controls.js           Nút phát, tua, chương, vòng lặp khung hình
-  export.js             Xuất video MP4/WebM
+  export.js             Xuất video MP4 (dựng từng khung + WebCodecs, dự phòng quay thời gian thực); xuất phụ đề .srt
   presets.js            Thế cờ và kịch bản mẫu (thêm bài giảng ở đây)
   board-editor.js       Bàn cờ tương tác: xếp thế cờ và ghi nước đi bằng chuột
   studio.js             Form dựng cảnh
   my-presets.js         Mẫu của tôi: lưu / xóa / tải xuống / mở danh sách mẫu (lưu trong trình duyệt)
   ai-panel.js           Trợ lý AI: gợi ý nước đi, kiểm duyệt kịch bản, nhập / xuất PGN
+  think.js              Suy nghĩ của máy: hiện từng dòng Pikafish báo ra (phương án, đổi ý, biểu đồ, biến, UCI gốc)
   pikafish.js           Cầu nối tới máy Pikafish (Web Worker, UCI)
   ai-commentary.js      Lời thoại bằng Claude (gói claude.ai hoặc khóa API): gửi dữ kiện, duyệt, chèn
 engine/pikafish.js      Pikafish đơn luồng (WebAssembly, tạo bằng tools/pikafish/build.sh)
 engine/pikafish-mt.js   Pikafish đa luồng (cần mở trang qua tools/serve.py)
 vendor/anthropic-sdk.js Thư viện chính thức @anthropic-ai/sdk đóng gói cho trình duyệt (tools/vendor-anthropic-sdk.sh)
+vendor/mp4-muxer.js     Thư viện mp4-muxer (MIT) đóng gói khung hình WebCodecs thành MP4 (tools/vendor-mp4-muxer.sh)
 tools/build.py          Gộp tất cả thành một file dist/co-tuong-sa-ban.html
 tools/serve.py          Máy chủ cục bộ kèm header COOP/COEP để Pikafish chạy đa luồng
 tools/pikafish/         Vá và biên dịch Pikafish sang WebAssembly
@@ -70,6 +72,16 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
 - **Gợi ý nước đi**: tính 3 nước tốt nhất cho thế cờ ở cuối kịch bản, vẽ mũi tên trên bàn cờ kèm diễn biến dự đoán. Bấm “Đi nước này” để thêm vào kịch bản.
 - **Kiểm duyệt kịch bản**: chấm từng nước (tốt nhất, nước tốt, chưa chính xác, sai lầm, sai lầm nghiêm trọng, bỏ lỡ chiếu bí) và chỉ ra nước máy chọn. Bấm vào một dòng để xem thế cờ đó trên bàn. Có thể chèn nhận xét của máy thành lời thoại.
+- **Suy nghĩ của máy** (khung mở/đóng dưới Trợ lý AI, cần chọn Pikafish): bấm “Bắt đầu suy nghĩ” để Pikafish nghĩ 10 giây đến 3 phút cho thế cờ đang ghi, với 1 đến 5 phương án. Khung hiện mọi điều Pikafish báo ra trong lúc nghĩ:
+  1. các phương án đang dẫn đầu, cập nhật liên tục: nước đi, điểm, độ sâu, tỉ lệ Đỏ thắng / hòa / Đen thắng, biến chính; mũi tên trên bàn đổi theo;
+  2. nhật ký theo độ sâu, đánh dấu những lần máy đổi nước tốt nhất;
+  3. biểu đồ điểm theo độ sâu của 3 phương án đầu (rê chuột để xem từng độ sâu);
+  4. bấm một nước trong biến để xem thế cờ đó trên bàn, nút ◀ ▶ để đi lui / tới trong biến;
+  5. nguyên văn các dòng UCI, sao chép được (kèm FEN) để dán cho Claude.
+
+  Bấm Dừng để dừng sớm; đi nước khác, bấm Gợi ý / Kiểm duyệt hay đóng khung thì máy cũng tự dừng. Pikafish không cho xem từng thế cờ nó duyệt (hàng triệu thế), chỉ báo một dòng mỗi khi nghĩ sâu thêm một tầng; khung này hiện đủ các dòng đó.
+- **Mũi tên gợi ý tự động**: khi ghi nước đi, sau mỗi nước máy tự tính và vẽ mũi tên cho 3 nước tốt nhất (xanh lá là nước tốt nhất). Tắt bằng ô “Tự hiện mũi tên gợi ý”; trang nhớ lựa chọn. Nút “Gợi ý nước đi” vẫn dùng để tính kỹ hơn và xem diễn biến.
+- **Tự vẽ để phân tích**: kéo chuột phải trên bàn cờ để vẽ mũi tên, bấm chuột phải vào một ô để khoanh tròn (như lichess); chọn màu, vẽ lại đúng nét để xóa, hoặc bấm “Xóa nét vẽ”. Trên điện thoại bật nút “Vẽ mũi tên” rồi kéo bằng ngón tay. Nét vẽ tự xóa khi đi nước mới.
 - **Thanh đánh giá**: thanh dọc cạnh bàn cờ (phần đỏ là cơ hội thắng của Đỏ, phần xanh là của Đen) tự cập nhật sau mỗi nước, như trên chess.com / lichess. Tắt được bằng ô “Tự chấm thế cờ sau mỗi nước”.
 - **Biểu đồ diễn biến**: sau khi kiểm duyệt, biểu đồ cho thấy thế cờ nghiêng về bên nào qua từng nước; chấm màu là nước đáng xem lại. Rê chuột để xem điểm, bấm để xem thế cờ trên bàn.
 - **Lời thoại bằng Claude**: sau khi kiểm duyệt, bấm “Viết lời thoại bằng Claude”. Claude (mô hình ngôn ngữ của Anthropic) nhận dữ kiện của máy cờ cho từng nước (thế cờ FEN trước nước, điểm trước/sau, nước máy chọn và diễn biến, ăn quân, chiếu; nước đáng xem lại có thêm 3 phương án tốt nhất của máy để so sánh) cùng tài liệu tham khảo bạn dán vào, rồi viết lời thoại tự nhiên. Bạn sửa, chọn dòng muốn dùng rồi mới chèn vào kịch bản. Nước đi nào Claude nhắc tới mà không có trong phân tích của máy cờ sẽ bị đánh dấu để bạn kiểm tra lại. Có hai cách dùng:
@@ -88,8 +100,10 @@ Nằm cạnh bàn cờ tương tác. Máy tính cờ chạy ngay trên trình du
 
 ### Chọn máy tính cờ
 
-- **Máy có sẵn**: nhẹ, dùng được ngay, mức nghiệp dư khá.
+- **Máy có sẵn**: nhẹ, dùng được ngay, mức nghiệp dư khá. Lặp lại một thế cờ lần thứ ba thì tính là hòa (không phân biệt bên chiếu dai).
 - **Pikafish (mạnh)**: [Pikafish](https://github.com/official-pikafish/Pikafish) là máy cờ tướng mã nguồn mở mạnh nhất hiện nay (mạng nơ-ron NNUE), vượt xa kỳ thủ người. Pikafish tuân theo luật châu Á về chiếu dai / đuổi dai.
+
+Cả hai máy đều nhận lịch sử ván (thế cờ ban đầu và các nước đã đi trong kịch bản) khi gợi ý, chấm thanh đánh giá và kiểm duyệt, nên xét được luật lặp nước trên cả ván chứ không chỉ thế cờ hiện tại.
   Lần đầu chọn Pikafish, trang sẽ hướng dẫn:
   1. Tải file mạng nơ-ron `pikafish.nnue` (khoảng 50 MB) từ bản phát hành chính thức.
   2. Chọn file vừa tải. Trình duyệt lưu file này lại, những lần sau dùng được ngay.
@@ -116,6 +130,33 @@ bash tools/pikafish/build.sh
 ```
 
 Pikafish phát hành theo giấy phép GPLv3; mã nguồn và bản vá nằm trong `tools/pikafish/`.
+
+## Xuất video
+
+Bấm “Xuất video” (cạnh nút phát). Trên Chrome / Edge, trang dựng lần lượt từng khung hình theo đúng thời điểm, mã hóa bằng WebCodecs của trình duyệt (H.264 + AAC nếu máy hỗ trợ, không thì VP9 + Opus) rồi ghi thành file MP4:
+
+- Không phụ thuộc thời gian thực: máy có card đồ họa thường xuất nhanh hơn độ dài video; máy yếu thì lâu hơn nhưng video vẫn mượt đủ 30 khung/giây, không bị rơi khung.
+- Vẫn chạy khi chuyển sang tab khác. Có thanh tiến độ, thời gian còn lại và nút “Hủy”.
+- Tiếng động được dựng riêng một lần (OfflineAudioContext) nên khớp từng khung hình. Đang tắt tiếng thì video không có âm thanh.
+
+Trình duyệt không có WebCodecs thì trang quay theo thời gian thực như cũ (MediaRecorder): tự tạm dừng khi chuyển tab, cũng có nút “Hủy”.
+
+## Giọng đọc: xuất phụ đề .srt cho CapCut
+
+Bấm “Phụ đề .srt” (cạnh “Xuất video”) để tải file phụ đề, mỗi câu thoại khớp đúng thời điểm nó hiện trong video. Ký hiệu nước đi được đổi sang cách đọc (“P5.4” thành “Pháo 5 tiến 4”, “Xt.3” thành “Xe trước tiến 3”), và câu thoại của mỗi nước được mở đầu bằng tên nước nếu câu chưa nhắc tới.
+
+Dùng với CapCut (máy tính hoặc điện thoại):
+
+1. Thêm video vừa xuất vào CapCut.
+2. Chọn Văn bản → Nhập phụ đề / Phụ đề cục bộ, chọn file `.srt`.
+3. Chọn tất cả phụ đề → “Chuyển văn bản thành giọng nói” (Text to speech), chọn một giọng tiếng Việt.
+4. Nếu chỉ muốn nghe giọng mà không hiện chữ, ẩn hoặc xóa lớp phụ đề sau khi đã tạo giọng.
+
+Giọng đọc dài hơn khoảng thời gian của câu thì chọn “Nhịp dựng: Chậm, kỹ” rồi dựng và xuất lại để mỗi câu có nhiều thời gian hơn.
+
+## Tự lưu bản nháp
+
+Tiêu đề, thế cờ và kịch bản đang soạn được tự lưu trong trình duyệt sau mỗi lần sửa. Lỡ tải lại hay đóng tab thì mở trang lại là soạn tiếp được (trang báo “Đã mở lại bản bạn đang soạn lần trước”). Đang soạn dở mà chọn một mẫu khác thì trang hỏi trước khi thay kịch bản. Bản nháp chỉ có một bản, nằm trong trình duyệt đang dùng; muốn giữ lâu dài hay mang sang máy khác thì bấm “Lưu thành mẫu”.
 
 ## Thêm bài giảng
 

@@ -11,6 +11,9 @@
   let mode = 'setup', setupB = new Array(90).fill(null), setupSide = 'r', tool = null, sel = null, drag = null, fenError = '';
   // Mũi tên gợi ý của Trợ lý AI; view = đang xem lại thế cờ trước một nước nào đó của kịch bản.
   let hints = [], view = null;
+  // Nét vẽ của người dùng để tự phân tích: mũi tên { f, t, color } hoặc vòng tròn { sq, color }.
+  // Gắn với thế cờ đang hiện; đi sang thế cờ khác thì tự xóa. pen: đang bật nút "Vẽ" (vẽ bằng chuột trái / cảm ứng).
+  let marks = [], marksKey = '', pen = false, penColor = '#e5484d', draw = null;
 
   // ---------- helpers ----------
   const fire = el => el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -19,16 +22,16 @@
   // Replays the script over the FEN (at most `limit` moves) and returns the resulting position.
   function replay(limit = Infinity) {
     const { B, side } = parseFEN(fenIn.value);
-    let b = B, s = side, n = 0, err = '', errLine = -1, last = null;
+    let b = B, s = side, n = 0, err = '', errLine = -1, last = null; const moves = [];
     const lines = scriptIn.value.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (!isMoveLine(lines[i])) continue;
       if (n >= limit) break;
       const mv = lines[i].split('|')[0].trim();
-      try { const m = resolve(b, s, mv); last = m; b = apply(b, m); s = opp(s); n++; }
+      try { const m = resolve(b, s, mv); last = m; moves.push(m); b = apply(b, m); s = opp(s); n++; }
       catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}`; errLine = i; break; }
     }
-    return { b, s, n, err, errLine, last };
+    return { b, s, n, err, errLine, last, b0: B, s0: side, moves }; // b0, s0, moves: lịch sử ván để máy cờ xét luật lặp nước
   }
   const iccs = m => { const f = i => String.fromCharCode(97 + i % 9) + (9 - ((i / 9) | 0)); return f(m[0]) + f(m[1]); };
   function readSetup() {
@@ -64,7 +67,7 @@
     return `<g transform="translate(${x},${y})" ${extra}><circle r="45" fill="#000" opacity=".25" cx="3" cy="5"/><circle r="44" fill="url(#edPc)" stroke="${col}" stroke-width="3"/><circle r="35" fill="none" stroke="${col}" stroke-width="2" opacity=".8"/><text font-size="46" font-weight="900" font-family='${CJK}' fill="${col}" text-anchor="middle" dominant-baseline="central" y="2">${CH[p.side][p.type]}</text></g>`;
   }
   function render() {
-    let B, s, targets = [], last = null, status = '', check = -1, over = false, valid = false;
+    let B, s, targets = [], last = null, status = '', check = -1, over = false, valid = false, game = null;
     if (mode === 'setup') {
       B = setupB; s = setupSide;
       status = fenError ? `FEN đang lỗi: ${fenError}` : setupWarnings();
@@ -72,9 +75,10 @@
       if (!fenError) { try { const r = replay(); if (r.err) status += ` Lưu ý: kịch bản không khớp với thế cờ này. ${r.err}.`; } catch (e) { /* FEN lỗi đã báo ở trên */ } }
     } else {
       let r;
-      try { r = replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
+      // view.board: xem một thế cờ bất kỳ (ví dụ thế cờ sau vài nước trong biến của máy), không phải thế cờ của kịch bản.
+      try { r = view && view.board ? { b: view.board, s: view.side, n: 0, last: view.last || null, err: '' } : replay(view ? view.ply : Infinity); } catch (e) { r = null; status = `Thế cờ chưa hợp lệ: ${e}. Hãy chuyển sang “Xếp thế cờ” để sửa.`; }
       if (r) {
-        B = r.b; s = r.s; last = r.last; valid = true;
+        B = r.b; s = r.s; last = r.last; valid = true; game = view && view.board ? null : r;
         const moves = legal(B, s);
         if (sel != null && !view) targets = moves.filter(m => m[0] === sel).map(m => m[1]);
         if (inCheck(B, s)) check = kingIdx(B, s);
@@ -85,6 +89,8 @@
         if (view) status = view.note || `Đang xem thế cờ sau ${r.n} nước. Bấm vào bàn cờ để quay lại.`;
       } else B = setupB;
     }
+    const key = B.map(p => p ? p.side + p.type : '.').join('') + s;
+    if (key !== marksKey) { marks = []; marksKey = key; }
     let h = STATIC;
     if (last) for (const i of last) h += `<circle cx="${X(i % 9)}" cy="${Y((i / 9) | 0)}" r="50" fill="#f0b44c" opacity=".35"/>`;
     if (check >= 0) h += `<circle cx="${X(check % 9)}" cy="${Y((check / 9) | 0)}" r="54" fill="#ff3b2f" opacity=".45"/>`;
@@ -99,6 +105,9 @@
       h += B[t] ? `<circle cx="${x}" cy="${y}" r="50" fill="none" stroke="#2fbf6a" stroke-width="7"/>` : `<circle cx="${x}" cy="${y}" r="14" fill="#2fbf6a" opacity=".85"/>`;
     }
     for (const a of (view ? view.hints : mode === 'record' ? hints : [])) h += arrowSvg(a.m[0], a.m[1], a.color, a.w || 16);
+    for (const k of marks) h += k.sq != null ? circleSvg(k.sq, k.color) : arrowSvg(k.f, k.t, k.color, 14);
+    if (draw && draw.to != null && draw.to !== draw.from) h += arrowSvg(draw.from, draw.to, penColor, 14);
+    $('edMarksClear').disabled = !marks.length;
     if (drag && drag.moved && B[drag.from]) h += pieceSvg(B[drag.from], drag.x, drag.y, 'style="filter:drop-shadow(0 8px 10px rgba(0,0,0,.4))"');
     svg.innerHTML = h;
     statusEl.textContent = status;
@@ -108,8 +117,16 @@
     $('edSetupTools').hidden = mode !== 'setup'; $('edRecordTools').hidden = mode !== 'record';
     $('edSide').value = setupSide;
     // Báo thế cờ đang hiển thị cho thanh đánh giá (js/app/ai-panel.js); bỏ qua khi đang kéo quân.
-    if (window.onEditorPosition && !(drag && drag.moved)) window.onEditorPosition({ B, s, valid });
+    // record: đang ghi nước (không xem lại một nước cũ) thì mới hiện mũi tên gợi ý tự động.
+    if (window.onEditorPosition && !(drag && drag.moved) && !draw) window.onEditorPosition({ B, s, valid, record: mode === 'record' && !view, game });
     tray.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === (tool ? tool.side + tool.type : tool === null ? 'move' : 'erase'))));
+  }
+  const circleSvg = (sq, color) => `<circle cx="${X(sq % 9)}" cy="${Y((sq / 9) | 0)}" r="49" fill="none" stroke="${color}" stroke-width="8" opacity=".85" pointer-events="none"/>`;
+  // Bật/tắt một nét vẽ: vẽ lại đúng nét đang có thì xóa nó (như lichess).
+  function toggleMark(from, to) {
+    const i = marks.findIndex(k => (from === to ? k.sq === from : k.f === from && k.t === to));
+    if (i >= 0 && marks[i].color === penColor) marks.splice(i, 1);
+    else { if (i >= 0) marks.splice(i, 1); marks.push(from === to ? { sq: from, color: penColor } : { f: from, t: to, color: penColor }); }
   }
   function arrowSvg(f, t, color, w) {
     const x1 = X(f % 9), y1 = Y((f / 9) | 0), x2 = X(t % 9), y2 = Y((t / 9) | 0);
@@ -146,7 +163,12 @@
     scriptIn.scrollTop = scriptIn.scrollHeight;
     return true;
   }
+  svg.addEventListener('contextmenu', e => e.preventDefault());
   svg.addEventListener('pointerdown', e => {
+    if (e.button === 2 || (pen && e.button === 0)) {
+      const h = hit(e); if (h.sq == null) return;
+      draw = { from: h.sq, to: h.sq }; svg.setPointerCapture(e.pointerId); e.preventDefault(); return;
+    }
     if (view) { view = null; render(); return; }
     const h = hit(e); if (h.sq == null) return;
     const cur = current(); if (!cur) return;
@@ -159,12 +181,14 @@
     else drag = { from: null, sq: h.sq, moved: false };
   });
   svg.addEventListener('pointermove', e => {
+    if (draw) { const h = hit(e); if (h.sq != null && h.sq !== draw.to) { draw.to = h.sq; render(); } return; }
     if (!drag || drag.from == null) return;
     const h = hit(e); drag.x = h.x; drag.y = h.y;
     if (!drag.moved && Math.hypot(h.x - drag.sx, h.y - drag.sy) > 18) { drag.moved = true; if (mode === 'record') sel = drag.from; }
     if (drag.moved) render();
   });
   svg.addEventListener('pointerup', e => {
+    if (draw) { const d = draw; draw = null; const h = hit(e); toggleMark(d.from, h.sq != null ? h.sq : d.to); render(); return; }
     if (!drag) return;
     const d = drag; drag = null; const h = hit(e), target = h.sq;
     if (mode === 'setup') {
@@ -186,7 +210,15 @@
     sel = d.from != null && sel !== d.from ? d.from : null;
     render();
   });
-  svg.addEventListener('pointercancel', () => { drag = null; render(); });
+  svg.addEventListener('pointercancel', () => { drag = null; draw = null; render(); });
+
+  // ---------- vẽ mũi tên để tự phân tích ----------
+  const penBtn = $('edPen');
+  penBtn.onclick = () => { pen = !pen; penBtn.setAttribute('aria-pressed', String(pen)); sel = null; render(); };
+  document.querySelectorAll('#edPenColors button').forEach(b => b.onclick = () => {
+    penColor = b.dataset.c; document.querySelectorAll('#edPenColors button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
+  $('edMarksClear').onclick = () => { marks = []; render(); };
 
   // ---------- tray & buttons ----------
   const TRAY = [...'kaehrcp'].map(t => ['r', t]).concat([...'kaehrcp'].map(t => ['b', t]));
@@ -236,6 +268,10 @@
     position: () => replay(),
     cutAtError,
     showHints: list => { view = null; hints = list || []; render(); },
+    hintCount: () => hints.length,
+    // Hiện một thế cờ bất kỳ (bấm vào bàn cờ để quay lại thế cờ của kịch bản).
+    preview: (board, side, list, note, last) => { if (mode !== 'record') setMode('record'); view = { board, side, hints: list || [], note, last }; render(); },
+    viewing: () => !!view,
     view: (ply, list, note) => { if (mode !== 'record') setMode('record'); view = { ply, hints: list || [], note }; render(); svg.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
     play: m => { if (mode !== 'record') setMode('record'); view = null; const cur = current(); if (!cur || cur.err) return false; return recordMove(m[0], m[1]); }
   };

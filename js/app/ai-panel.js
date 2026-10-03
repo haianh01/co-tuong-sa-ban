@@ -58,12 +58,16 @@ const AIEngine = (() => {
   const MATE = 30000, WIN = MATE - 500;
   const CODE = { k: 1, a: 2, e: 3, h: 4, r: 5, c: 6, p: 7 };
   const toCodes = B => B.map(p => p ? CODE[p.type] + (p.side === 'b' ? 8 : 0) : 0);
+  // Lịch sử ván (thế đầu + các nước đã đi tới thế đang tính) để máy cờ xét luật lặp nước / chiếu dai.
+  const histOf = (B0, s0, moves) => (moves && moves.length ? { board: toCodes(B0), side: sideNum(s0), moves: moves.slice() } : null);
+  const gameHist = g => (g ? histOf(g.b0, g.s0, g.moves) : null);
   const sideNum = s => s === 'r' ? 0 : 1;
   const sideName = s => s === 'r' ? 'Đỏ' : 'Đen';
   const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const levelSel = $('aiLevel'), hintBtn = $('aiHint'), reviewBtn = $('aiReview'), stopBtn = $('aiStop'), statusEl = $('aiStatus'), out = $('aiOut');
-  const ARROW = ['#2fbf6a', '#3b82f6', '#a855f7'];
+  // Màu 3 phương án (mũi tên trên bàn, biểu đồ "Suy nghĩ của máy"): đã kiểm tra phân biệt được cả với người mù màu.
+  const ARROW = ['#1f9e55', '#3b82f6', '#d9409a'];
   let busy = false, lastReview = null;
 
   // Ký hiệu một nước đi, có kiểm tra ngược để chắc chắn đọc lại được.
@@ -91,6 +95,7 @@ const AIEngine = (() => {
   const timeBudget = () => +levelSel.value;
 
   function setBusy(b) {
+    if (b && window.thinkActive && window.stopThinking) window.stopThinking('Đã dừng để Trợ lý AI gợi ý / kiểm duyệt.');
     busy = b; hintBtn.disabled = b; reviewBtn.disabled = b; stopBtn.hidden = !b;
   }
   function say(msg, isErr) { statusEl.textContent = msg; statusEl.classList.toggle('err', !!isErr); }
@@ -114,8 +119,10 @@ const AIEngine = (() => {
   // red: điểm theo phía Đỏ, null = chưa có.
   function showBar(red, side) {
     evalBar.classList.remove('busy');
+    // Chưa có điểm: thanh xám trơn (không chia đôi đỏ/xanh, kẻo trông như thế cờ cân bằng).
+    evalBar.classList.toggle('none', red == null);
     if (red == null) {
-      evalRed.style.height = '50%'; evalNum.textContent = '–'; evalNum.className = 'evalbar-num at-red';
+      evalRed.style.height = '0%'; evalNum.textContent = '–'; evalNum.className = 'evalbar-num at-red';
       evalBar.setAttribute('aria-valuenow', '50'); evalBar.setAttribute('aria-valuetext', 'Chưa có đánh giá'); return;
     }
     const pct = Math.round(redChance(red) * 1000) / 10;
@@ -126,30 +133,50 @@ const AIEngine = (() => {
     evalBar.setAttribute('aria-valuetext', `${scoreText(side === 'r' ? red : -red, side)}. Đỏ ${pct.toFixed(0)}%, Đen ${(100 - pct).toFixed(0)}%`);
   }
   let evalPos = null, evalTimer = 0, evalSeq = 0;
+  // Mũi tên gợi ý tự động: mỗi thế cờ tính một lần (MultiPV 3), dùng chung lần tính với thanh đánh giá.
+  const hintAuto = $('hintAuto'), hintCache = new Map();
+  let hintShown = null;
+  function applyHints(key, lines) {
+    if (hintShown === key && Editor.hintCount()) return; // đang hiện đúng các mũi tên này (tránh vẽ lại vô hạn)
+    hintShown = key;
+    Editor.showHints(lines.map((l, i) => ({ m: l.move, color: ARROW[i], w: i ? 10 : 16 })).reverse());
+  }
   // Bàn cờ tương tác gọi hàm này mỗi khi thế cờ hiển thị thay đổi.
-  window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); };
+  window.onEditorPosition = pos => { evalPos = pos; clearTimeout(evalTimer); evalTimer = setTimeout(runEval, 250); if (window.onThinkPosition) window.onThinkPosition(pos); };
   async function runEval() {
     const pos = evalPos;
-    evalBar.classList.toggle('off', !evalAuto.checked);
     if (!pos || !pos.valid) { showBar(null); return; }
-    const { B, s: side } = pos;
+    const { B, s: side } = pos, key = posKey(B, side);
     if (!legal(B, side).length) { showBar(side === 'r' ? -MATE : MATE, side); return; } // hết nước là thua
-    const hit = evalCache.get(posKey(B, side));
-    if (hit) { showBar(hit.red, side); return; }
-    if (!evalAuto.checked) { showBar(null); return; }
-    if (busy) return; // đang gợi ý / kiểm duyệt: giữ nguyên thanh, kết quả sẽ tự cập nhật
+    const wantHints = hintAuto.checked && pos.record, hh = wantHints ? hintCache.get(key) : null;
+    if (hh) applyHints(key, hh);
+    const hit = evalCache.get(key);
+    if (hit) showBar(hit.red, side);
+    else if (!evalAuto.checked) showBar(null);
+    if ((hit || !evalAuto.checked) && (!wantHints || hh)) return;
+    if (busy || window.thinkActive) return; // đang gợi ý / kiểm duyệt / máy đang suy nghĩ: giữ nguyên, kết quả sẽ tự cập nhật
     // Pikafish chưa khởi động (chưa có mạng nơ-ron) thì không tự khởi động ở đây.
-    if (engineSel.value === 'pikafish' && !PikafishEngine.info()) { showBar(null); return; }
-    const my = ++evalSeq;
+    if (engineSel.value === 'pikafish' && !PikafishEngine.info()) { if (!hit) showBar(null); return; }
+    const my = ++evalSeq, pf = AIEngine.kind() === 'pikafish';
     evalBar.classList.add('busy');
     try {
-      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: AIEngine.kind() === 'pikafish' ? 500 : 350, split: false });
+      const r = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: wantHints ? (pf ? 900 : 700) : (pf ? 500 : 350), multi: wantHints ? 3 : 1, split: false, history: gameHist(pos.game) });
       if (!r.lines.length) return;
       remember(B, side, r.lines[0].score, r.depth);
-      if (my === evalSeq && evalPos === pos) showBar(toRed(r.lines[0].score, side), side);
+      if (wantHints) hintCache.set(key, r.lines);
+      if (my === evalSeq && evalPos === pos) {
+        showBar(toRed(r.lines[0].score, side), side); // đã tính thì luôn hiện, kể cả khi tắt "Tự chấm"
+        if (wantHints && hintAuto.checked) applyHints(key, r.lines);
+      }
     } catch (e) { /* bị dừng vì có việc khác: bỏ qua */ }
     finally { if (my === evalSeq) evalBar.classList.remove('busy'); }
   }
+  hintAuto.addEventListener('change', () => {
+    try { localStorage.setItem('hintAuto', hintAuto.checked ? '1' : '0'); } catch (e) { /* bỏ qua */ }
+    if (!hintAuto.checked && hintShown) { hintShown = null; Editor.showHints([]); }
+    runEval();
+  });
+  try { if (localStorage.getItem('hintAuto') === '0') hintAuto.checked = false; } catch (e) { /* bỏ qua */ }
   evalAuto.addEventListener('change', () => { try { localStorage.setItem('evalAuto', evalAuto.checked ? '1' : '0'); } catch (e) { /* bỏ qua */ } runEval(); });
   try { if (localStorage.getItem('evalAuto') === '0') evalAuto.checked = false; } catch (e) { /* bỏ qua */ }
 
@@ -172,13 +199,13 @@ const AIEngine = (() => {
     say(`Máy đang tính cho ${sideName(side)}…`);
     let res;
     try {
-      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3, moves: legal(B, side) }, info => {
+      res = await AIEngine.analyze({ board: toCodes(B), side: sideNum(side), time: timeBudget(), multi: 3, moves: legal(B, side), history: gameHist(pos) }, info => {
         say(`Máy đang tính cho ${sideName(side)}: độ sâu ${info.depth}, tạm chọn ${pvText(B, side, info.pv, 1)} (${scoreText(info.score, side)})`);
       });
     } catch (e) { setBusy(false); say(e.message === 'stopped' ? 'Đã dừng.' : `Lỗi khi tính: ${e.message || e}`, e.message !== 'stopped'); return; }
     setBusy(false);
     const lines = res.lines;
-    if (lines.length) { remember(B, side, lines[0].score, res.depth + 100); showBar(toRed(lines[0].score, side), side); }
+    if (lines.length) { remember(B, side, lines[0].score, res.depth + 100); showBar(toRed(lines[0].score, side), side); hintCache.set(posKey(B, side), lines); hintShown = posKey(B, side); }
     say(`Lượt ${sideName(side)}. ${res.engine === 'pikafish' ? 'Pikafish' : 'Máy có sẵn'} đã xét ${res.nodes.toLocaleString('vi-VN')} thế cờ, độ sâu ${res.depth}.`);
     out.innerHTML = `<ol class="ai-list">${lines.map((l, i) => `<li><span class="ai-dot" style="background:${ARROW[i]}"></span>` +
       `<span class="ai-main"><b>${esc(nota(B, side, l.move))}</b> <span class="ai-ev">${esc(scoreText(l.score, side))}</span>` +
@@ -205,10 +232,11 @@ const AIEngine = (() => {
       if (!legal(B, side).length) { err = `Dòng ${i + 1} (“${mv}”): ván cờ đã kết thúc trước nước này.`; break; }
       let m;
       try { m = resolve(B, side, mv); } catch (e) { err = `Dòng ${i + 1} (“${mv}”): ${e}.`; break; }
-      plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0 });
+      plies.push({ idx: plies.length, line: i, B, side, m, text: mv, nota: nota(B, side, m), no: 0, hist: histOf(B0, s0, plies.map(q => q.m)) });
       B = apply(B, m); side = opp(side);
     }
-    let no = 1; plies.forEach((p, i) => { if (i && p.side === s0) no++; p.no = no; });
+    // Đánh số theo chuẩn: mỗi số là một cặp Đỏ rồi Đen (Đen đi trước thì nước đầu là "1…", nước Đỏ sau đó là "2.").
+    let no = 1; plies.forEach((p, i) => { if (i && p.side === 'r') no++; p.no = no; });
     return { plies, err, s0 };
   }
   function classify(p) {
@@ -233,13 +261,13 @@ const AIEngine = (() => {
     let stopped = false, failed = null, next = 0, count = 0;
     const lanes = AIEngine.lanes();
     async function grade(p) {
-      const board = toCodes(p.B), side = sideNum(p.side);
-      const r = await AIEngine.analyze({ board, side, time: T, split: false });
+      const board = toCodes(p.B), side = sideNum(p.side), history = p.hist;
+      const r = await AIEngine.analyze({ board, side, time: T, split: false, history });
       const best = r.lines[0];
       p.bestMove = best.move; p.best = best.score; p.bestPv = best.pv; p.depth = r.depth;
       if (same(best.move, p.m)) { p.played = best.score; p.playedPv = best.pv; }
       else {
-        const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false });
+        const rp = await AIEngine.analyze({ board, side, time: T * 2, maxDepth: Math.max(1, r.depth), only: [p.m], split: false, history });
         p.played = rp.lines.length ? rp.lines[0].score : best.score;
         p.playedPv = rp.lines.length ? rp.lines[0].pv : [p.m]; // bắt đầu bằng chính nước đã đi: phần sau là đòn đáp của đối phương
       }
@@ -248,7 +276,7 @@ const AIEngine = (() => {
       p.cls = classify(p);
       // Nước đáng xem lại: tính thêm 3 phương án tốt nhất để trả lời "sao không đi nước khác".
       if (['inacc', 'mistake', 'blunder'].includes(p.cls.key) && legal(p.B, p.side).length > 1) {
-        const ra = await AIEngine.analyze({ board, side, time: T, multi: 3, split: false });
+        const ra = await AIEngine.analyze({ board, side, time: T, multi: 3, split: false, history });
         p.alts = ra.lines.map(l => ({ move: l.move, score: l.score, pv: l.pv }));
       }
       remember(p.B, p.side, p.best, (p.depth || 0) + 100);
@@ -290,7 +318,7 @@ const AIEngine = (() => {
     const flagged = plies.filter(p => ['inacc', 'mistake', 'blunder'].includes(p.cls.key));
     out.innerHTML = evalGraph(plies, s0) + `<ul class="ai-sum">${sum(s0)}${sum(opp(s0))}</ul>` +
       `<ol class="ai-review">${plies.map((p, i) => `<li class="k-${p.cls.key}"><button type="button" data-i="${i}">` +
-        `<span class="n">${p.no}${p.side === s0 ? '.' : '…'}</span><b>${esc(p.nota)}${p.cls.sym}</b>` +
+        `<span class="n">${p.no}${p.side === 'r' ? '.' : '…'}</span><b>${esc(p.nota)}${p.cls.sym}</b>` +
         `<span class="tag">${esc(p.cls.label)}</span><span class="ai-ev">${esc(scoreText(p.played, p.side))}</span>` +
         (same(p.m, p.bestMove) ? '' : `<span class="alt">Máy chọn ${esc(nota(p.B, p.side, p.bestMove))}</span>`) +
         `</button></li>`).join('')}</ol>` +
@@ -300,7 +328,7 @@ const AIEngine = (() => {
       const hints = [{ m: p.m, color: same(p.m, p.bestMove) ? ARROW[0] : '#f59e0b', w: 16 }];
       if (!same(p.m, p.bestMove)) hints.unshift({ m: p.bestMove, color: ARROW[0], w: 12 });
       const ply = p.idx; // số nước đã đi trước nước này
-      const note = `Trước nước ${p.no}${p.side === s0 ? '' : '…'} (${sideName(p.side)} đi). Kịch bản: ${p.nota} (mũi tên cam nếu khác máy)` +
+      const note = `Trước nước ${p.no}${p.side === 'r' ? '' : '…'} (${sideName(p.side)} đi). Kịch bản: ${p.nota} (mũi tên cam nếu khác máy)` +
         (same(p.m, p.bestMove) ? ', trùng nước máy chọn.' : `; máy chọn ${nota(p.B, p.side, p.bestMove)} (mũi tên xanh): ${pvText(p.B, p.side, p.bestPv, 6)}.`) + ' Bấm vào bàn cờ để quay lại.';
       Editor.view(ply, hints, note);
     };
@@ -383,7 +411,7 @@ const AIEngine = (() => {
       cross.setAttribute('x1', X(q.x)); cross.setAttribute('x2', X(q.x)); cross.setAttribute('visibility', 'visible');
       cur.setAttribute('cx', X(q.x)); cur.setAttribute('cy', Y(q.red)); cur.setAttribute('visibility', 'visible');
       const txt = scoreText(q.red, 'r');
-      tip.textContent = q.p ? `${q.p.no}${q.p.side === s0 ? '.' : '…'} ${q.p.nota}${q.p.cls.sym} · ${txt} · ${q.p.cls.label}` : `Thế cờ ban đầu · ${txt}`;
+      tip.textContent = q.p ? `${q.p.no}${q.p.side === 'r' ? '.' : '…'} ${q.p.nota}${q.p.cls.sym} · ${txt} · ${q.p.cls.label}` : `Thế cờ ban đầu · ${txt}`;
       tip.style.display = 'block';
       tip.style.left = Math.min(Math.max(X(q.x) * k, 60), r.width - 60) + 'px';
       tip.style.top = (Y(q.red) * k - 8) + 'px';
@@ -436,6 +464,8 @@ const AIEngine = (() => {
       return false;
     }
   }
+  // Dùng chung cho khung "Suy nghĩ của máy" (js/app/think.js).
+  window.AIKit = { nota, scoreText, toCodes, sideNum, gameHist, ARROW, prepareEngine, isBusy: () => busy, engine: () => engineSel.value, remember, showBar, toRed, evalNow: () => runEval() };
   engineSel.onchange = () => {
     try { localStorage.setItem('aiEngine', engineSel.value); } catch (e) { /* bỏ qua */ }
     if (busy) AIEngine.stop();
